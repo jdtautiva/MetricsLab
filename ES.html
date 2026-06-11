@@ -1,0 +1,2722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetricsLab — Simulador gerencial</title>
+<style>
+/* ===== RESET Y BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f0f4f8;
+  color: #1a2233;
+  min-height: 100vh;
+}
+
+/* ===== LAYOUT ===== */
+.screen { display: none; max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.screen.active { display: block; }
+
+/* ===== CABECERA ===== */
+header.sim-header {
+  background: linear-gradient(135deg, #1a3a6b 0%, #2563eb 100%);
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.header-brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.header-brand h1 { font-size: 1.18rem; font-weight: 800; letter-spacing: .4px; line-height: 1.1; }
+.header-brand .header-subtitle { font-size: .78rem; opacity: .92; line-height: 1.25; }
+.header-brand .header-course { font-size: .72rem; opacity: .78; line-height: 1.25; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+header.sim-header .round-badge {
+  background: rgba(255,255,255,0.18);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: .85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media(max-width:640px){
+  header.sim-header { align-items: flex-start; flex-direction: column; }
+  .header-actions { width: 100%; justify-content: space-between; }
+}
+
+/* ===== TARJETAS ===== */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  padding: 28px 28px 24px;
+  margin-bottom: 20px;
+}
+.card h2 { font-size: 1.25rem; color: #1a3a6b; margin-bottom: 10px; }
+.card h3 { font-size: 1rem; color: #374151; margin-bottom: 8px; font-weight: 600; }
+.card p  { font-size: .95rem; line-height: 1.65; color: #374151; margin-bottom: 10px; }
+
+/* ===== BOTONES ===== */
+.btn {
+  display: inline-block;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary  { background: #2563eb; color: #fff; }
+.btn-primary:hover  { background: #1d4ed8; }
+.btn-secondary{ background: #e5e7eb; color: #374151; }
+.btn-secondary:hover{ background: #d1d5db; }
+.btn-danger   { background: #dc2626; color: #fff; }
+.btn-danger:hover   { background: #b91c1c; }
+.btn-success  { background: #16a34a; color: #fff; }
+.btn-success:hover  { background: #15803d; }
+.btn-wide     { width: 100%; margin-top: 10px; }
+.btn-row      { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+
+/* ===== OPCIONES DE SELECCIÓN ===== */
+.option-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 16px 0; }
+@media(min-width:600px){ .option-grid { grid-template-columns: 1fr 1fr; } }
+@media(min-width:800px){ .option-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+.option-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: #f9fafb;
+}
+.option-card:hover { border-color: #2563eb; background: #eff6ff; }
+.option-card.selected { border-color: #2563eb; background: #dbeafe; }
+.option-card .option-title { font-weight: 700; font-size: .97rem; color: #1a3a6b; margin-bottom: 5px; }
+.option-card .option-desc  { font-size: .86rem; color: #6b7280; line-height: 1.5; }
+.option-card .option-risk  { font-size: .82rem; color: #b45309; margin-top: 6px; font-style: italic; }
+
+/* Métricas tipo checkbox */
+.metric-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #f9fafb;
+  transition: border-color .2s, background .2s;
+}
+.metric-item:hover { border-color: #2563eb; background: #eff6ff; }
+.metric-item.selected { border-color: #2563eb; background: #dbeafe; }
+.metric-item input[type=checkbox] { width: 18px; height: 18px; accent-color: #2563eb; flex-shrink: 0; margin-top: 2px; }
+.metric-item .metric-label { font-weight: 600; font-size: .93rem; }
+.metric-item .metric-type  { font-size: .8rem; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+.badge-vanity    { background: #fee2e2; color: #991b1b; }
+.badge-actionable{ background: #dcfce7; color: #166534; }
+.metric-list { display: grid; gap: 10px; margin: 14px 0; }
+
+/* ===== DASHBOARD DE RESULTADOS ===== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+@media(min-width:640px){ .dashboard-grid { grid-template-columns: 1fr 1fr; } }
+@media(min-width:900px){ .dashboard-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+.kpi-card {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  border-left: 5px solid #94a3b8;
+}
+.kpi-card.green  { border-left-color: #16a34a; background: #f0fdf4; }
+.kpi-card.yellow { border-left-color: #ca8a04; background: #fefce8; }
+.kpi-card.red    { border-left-color: #dc2626; background: #fef2f2; }
+.kpi-card .kpi-label { font-size: .78rem; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.kpi-card .kpi-value { font-size: 1.3rem; font-weight: 700; color: #111827; }
+.kpi-card .kpi-status { font-size: .78rem; margin-top: 4px; font-weight: 600; }
+.kpi-card.green  .kpi-status { color: #16a34a; }
+.kpi-card.yellow .kpi-status { color: #ca8a04; }
+.kpi-card.red    .kpi-status { color: #dc2626; }
+
+/* ===== FEEDBACK / ALERTAS ===== */
+.feedback-box {
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-size: .9rem;
+  line-height: 1.6;
+}
+.feedback-box.info   { background: #eff6ff; border-left: 4px solid #2563eb; color: #1e40af; }
+.feedback-box.warn   { background: #fef9c3; border-left: 4px solid #ca8a04; color: #92400e; }
+.feedback-box.danger { background: #fef2f2; border-left: 4px solid #dc2626; color: #991b1b; }
+.feedback-box.success{ background: #f0fdf4; border-left: 4px solid #16a34a; color: #166534; }
+.feedback-box strong { display: block; margin-bottom: 4px; }
+
+/* ===== PROGRESS BAR ===== */
+.progress-bar-wrap { background: #e5e7eb; border-radius: 20px; height: 10px; margin: 8px 0 20px; }
+.progress-bar-fill { height: 10px; border-radius: 20px; background: linear-gradient(90deg, #2563eb, #16a34a); transition: width .5s; }
+
+/* ===== SECCIÓN TÍTULO RONDA ===== */
+.round-header {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff;
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.round-header .round-num { font-size: .85rem; opacity: .8; margin-bottom: 4px; }
+.round-header h2 { font-size: 1.4rem; font-weight: 700; }
+.round-header p  { font-size: .92rem; opacity: .9; margin-top: 6px; }
+
+/* ===== TABLA ===== */
+.sim-table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: 14px 0; }
+.sim-table th { background: #1e3a8a; color: #fff; padding: 10px 12px; text-align: left; }
+.sim-table td { padding: 9px 12px; border-bottom: 1px solid #e5e7eb; }
+.sim-table tr:nth-child(even) td { background: #f9fafb; }
+
+/* ===== FORMULARIO RONDA 3 ===== */
+.select-label { font-size: .9rem; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+.sim-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: .95rem;
+  background: #fff;
+  margin-bottom: 16px;
+  transition: border-color .2s;
+}
+.sim-select:focus { border-color: #2563eb; outline: none; }
+.decision-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
+  row-gap: 2px;
+  margin-top: 16px;
+}
+.decision-field { min-width: 0; }
+.decision-field .sim-select { margin-bottom: 16px; }
+@media(max-width:720px){ .decision-grid { grid-template-columns: 1fr; } }
+
+/* ===== PUNTAJE ===== */
+.score-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-weight: 800;
+  font-size: 2rem;
+  border: 8px solid;
+}
+.score-circle.alto    { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+.score-circle.medio   { border-color: #ca8a04; color: #ca8a04; background: #fefce8; }
+.score-circle.bajo    { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+.score-circle .score-label { font-size: .65rem; font-weight: 600; margin-top: 2px; }
+
+/* ===== MODAL AYUDA ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px;
+  max-width: 680px;
+  width: 95%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+.modal-box h2 { color: #1a3a6b; margin-bottom: 16px; }
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+}
+.formula-block {
+  background: #f0f4f8;
+  border-left: 4px solid #2563eb;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'Courier New', monospace;
+  font-size: .88rem;
+  margin: 8px 0 16px;
+  white-space: pre-wrap;
+}
+
+
+
+/* ===== GRÁFICO FINANCIERO INTERNO ===== */
+.financial-chart-wrap {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 14px 10px;
+  margin: 16px 0 14px;
+  overflow-x: auto;
+}
+.financial-chart-title {
+  font-size: .9rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 4px;
+}
+.financial-chart-subtitle {
+  font-size: .8rem;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+.cashflow-chart-svg {
+  width: 100%;
+  min-width: 640px;
+  height: auto;
+  display: block;
+  background: #ffffff;
+  border-radius: 10px;
+}
+.chart-grid-line { stroke: #e5e7eb; stroke-width: 1; }
+.chart-axis-line { stroke: #94a3b8; stroke-width: 1.5; }
+.chart-zero-line { stroke: #dc2626; stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .85; }
+.chart-line { fill: none; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.chart-line.annual { stroke: #2563eb; }
+.chart-line.cumulative { stroke: #16a34a; }
+.chart-point.annual { fill: #2563eb; stroke: #ffffff; stroke-width: 2; }
+.chart-point.cumulative { fill: #16a34a; stroke: #ffffff; stroke-width: 2; }
+.chart-label { font-size: 12px; fill: #475569; font-weight: 600; }
+.chart-tick { font-size: 11px; fill: #64748b; }
+.chart-value-label { font-size: 11px; fill: #1f2937; font-weight: 700; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: .82rem; color: #374151; margin-top: 10px; }
+.chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend-swatch { width: 18px; height: 4px; border-radius: 8px; display: inline-block; }
+.chart-legend-swatch.annual { background: #2563eb; }
+.chart-legend-swatch.cumulative { background: #16a34a; }
+.projection-table-note { font-size: .8rem; color: #6b7280; margin: 12px 0 4px; }
+
+@media print {
+  .financial-chart-wrap { break-inside: avoid; page-break-inside: avoid; }
+  .cashflow-chart-svg { min-width: 0; }
+}
+
+/* ===== PANTALLA INICIO ===== */
+.inicio-hero {
+  text-align: center;
+  padding: 40px 24px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #0891b2 100%);
+  color: #fff;
+  border-radius: 16px;
+  margin-bottom: 24px;
+}
+.inicio-hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+.inicio-hero .subtitle { font-size: 1.05rem; opacity: .9; margin-bottom: 4px; }
+.inicio-hero .meta { font-size: .88rem; opacity: .75; margin-top: 10px; }
+
+/* ===== REFLEXIÓN ===== */
+.reflection-list { counter-reset: ref; list-style: none; margin: 14px 0; }
+.reflection-list li {
+  counter-increment: ref;
+  padding: 10px 14px 10px 44px;
+  position: relative;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: .93rem;
+  line-height: 1.6;
+}
+.reflection-list li::before {
+  content: counter(ref);
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  background: #2563eb;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8rem;
+  font-weight: 700;
+}
+
+/* ===== HISTORIAL ===== */
+.history-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: .88rem;
+}
+.history-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ===== FORMULARIOS Y SELECCIÓN DE CASOS ===== */
+.sim-input, .sim-textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: .95rem;
+  font-family: inherit;
+  background: #fff;
+  transition: border-color .2s;
+}
+.sim-textarea { min-height: 118px; resize: vertical; line-height: 1.55; }
+.sim-input:focus, .sim-textarea:focus { border-color: #2563eb; outline: none; }
+
+.justification-card { border-left: 5px solid #2563eb; }
+.char-counter {
+  font-size: .82rem;
+  text-align: right;
+  color: #dc2626;
+  margin-top: 6px;
+  font-weight: 700;
+}
+.char-counter.ok { color: #16a34a; }
+.justification-output {
+  white-space: pre-wrap;
+  line-height: 1.55;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: .9rem;
+  color: #374151;
+}
+.justification-output strong { color: #1a3a6b; }
+.decision-response-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-left: 5px solid #2563eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+.decision-response-card h4 {
+  color: #1a3a6b;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+.decision-response-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media(min-width:760px){ .decision-response-grid { grid-template-columns: 1fr 1.2fr; } }
+.decision-response-block {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 12px 14px;
+}
+.decision-response-block strong {
+  display: block;
+  color: #374151;
+  margin-bottom: 7px;
+}
+.decision-response-list {
+  margin-left: 18px;
+  line-height: 1.65;
+  font-size: .88rem;
+  color: #374151;
+}
+.written-response-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: .9rem;
+  color: #374151;
+}
+
+.participant-chip {
+  display: inline-block;
+  margin: 4px 6px 4px 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin: 16px 0;
+}
+@media(min-width:700px){ .case-grid { grid-template-columns: 1fr 1fr; } }
+
+.case-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .1s;
+}
+.case-card:hover { border-color: #2563eb; background: #eff6ff; transform: translateY(-1px); }
+.case-card.selected { border-color: #2563eb; background: #dbeafe; }
+.case-card .case-title { font-size: 1rem; font-weight: 800; color: #1a3a6b; margin-bottom: 6px; }
+.case-card .case-sector { font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; margin-bottom: 8px; font-weight: 700; }
+.case-card .case-desc { font-size: .88rem; color: #374151; line-height: 1.55; }
+.case-card .case-meta { margin-top: 10px; font-size: .8rem; color: #4b5563; }
+
+.report-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+@media(min-width:700px){ .report-meta { grid-template-columns: 1fr 1fr; } }
+.report-meta-item {
+  background: #f9fafb;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: .9rem;
+}
+.report-meta-item strong { display:block; color:#1a3a6b; margin-bottom:3px; }
+
+/* ===== IMPRESIÓN / EXPORTACIÓN A PDF ===== */
+@media print {
+  body { background: #fff; color: #111827; }
+  header.sim-header, .btn-row, .modal-overlay, .no-print { display: none !important; }
+  .screen { display: none !important; max-width: none; padding: 0; }
+  #screen-final { display: block !important; }
+  .card {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 14px;
+  }
+  .round-header {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .dashboard-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .kpi-card {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<!-- CABECERA FIJA -->
+<header class="sim-header" id="simHeader" style="display:none">
+  <div class="header-brand">
+    <h1>📊 MetricsLab</h1>
+    <div class="header-subtitle">15-20 minutos · Curso Managerial Economics · Julián Díaz Tautiva, PhD</div>
+  </div>
+  <div class="header-actions">
+    <div class="round-badge" id="headerBadge">Ronda 1 / 4</div>
+    <button class="btn btn-secondary" style="font-size:.8rem;padding:6px 14px" onclick="openHelp()">📖 Ayuda</button>
+  </div>
+</header>
+
+<!-- ============================================================
+     PANTALLA 0: INICIO
+     ============================================================ -->
+<div class="screen active" id="screen-inicio">
+  <div class="inicio-hero">
+    <div style="font-size:3rem;margin-bottom:12px">🏫</div>
+    <h1>MetricsLab</h1>
+    <p class="subtitle">Simulador de decisiones económicas focalizadas en métricas de innovación</p>
+    <p class="meta">6 casos disponibles · 4 rondas · 15-20 minutos · Curso Managerial Economics · Julián Díaz Tautiva, PhD</p>
+  </div>
+
+  <div class="card">
+    <h2>¿Qué vas a aprender?</h2>
+    <p>En este simulador administrarás un proyecto innovador seleccionado por tu equipo. Tomarás decisiones gerenciales reales y observarás cómo afectan la viabilidad del negocio.</p>
+    <p>Practicarás:</p>
+    <ul style="margin-left:20px;line-height:1.9;font-size:.95rem">
+      <li>Evaluación y coherencia del modelo de negocio</li>
+      <li>Métricas accionables vs. métricas vanidosas</li>
+      <li>Punto de equilibrio y relación costo/beneficio</li>
+      <li>Indicadores financieros: VAN, TIR, PR, VAE e IVAN</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>📋 Estructura del juego</h3>
+    <table class="sim-table">
+      <thead><tr><th>Ronda</th><th>Foco</th><th>Decisión principal</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1</strong></td><td>Modelo de negocio</td><td>Segmento, propuesta de valor, modelo de ingresos</td></tr>
+        <tr><td><strong>2</strong></td><td>Métricas y aprendizaje</td><td>¿Qué mides? ¿Métricas vanidosas o accionables?</td></tr>
+        <tr><td><strong>3</strong></td><td>Viabilidad operativa</td><td>Precio, marketing, desarrollo, soporte</td></tr>
+        <tr><td><strong>4</strong></td><td>Evaluación financiera</td><td>¿Escalas, pivotas o abandonas?</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="text-align:center;padding:10px 0 30px">
+    <button class="btn btn-primary" style="font-size:1.1rem;padding:16px 40px" onclick="goTo('screen-participantes')">
+      ▶ Registrar participantes
+    </button>
+    <p style="font-size:.82rem;color:#6b7280;margin-top:12px">Puedes consultar las fórmulas en cualquier momento con el botón 📖 Ayuda</p>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     PANTALLA 0B: PARTICIPANTES
+     ============================================================ -->
+<div class="screen" id="screen-participantes">
+  <div class="round-header">
+    <div class="round-num">PRIMERA INSTANCIA</div>
+    <h2>Participantes del equipo</h2>
+    <p>Antes de seleccionar el caso, registra los nombres de quienes participarán en esta simulación.</p>
+  </div>
+
+  <div class="card">
+    <h2>👥 Registro de participantes</h2>
+    <p>Escribe los nombres de los integrantes del equipo. Puedes ingresar un nombre por línea o separarlos por coma.</p>
+    <label class="select-label" for="team-name">Nombre del equipo o grupo</label>
+    <input class="sim-input" id="team-name" type="text" placeholder="Ejemplo: Equipo 3 — Sección A">
+
+    <label class="select-label" for="participants-input" style="margin-top:14px">Nombres de participantes</label>
+    <textarea class="sim-textarea" id="participants-input" placeholder="Ejemplo:
+Camila Rojas
+Diego Pérez
+Valentina Soto"></textarea>
+
+    <div id="participants-preview" style="margin-top:12px"></div>
+
+    <div id="participants-error" class="feedback-box danger" style="display:none;margin-top:12px">
+      <strong>⚠ Registro incompleto</strong>Debes ingresar al menos un participante para continuar.
+    </div>
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-secondary" onclick="goTo('screen-inicio')">← Volver</button>
+    <button class="btn btn-primary" onclick="submitParticipantes()">Continuar a selección de caso →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 0C: SELECCIÓN DE CASO
+     ============================================================ -->
+<div class="screen" id="screen-seleccion-caso">
+  <div class="round-header">
+    <div class="round-num">SELECCIÓN DE CONTEXTO</div>
+    <h2>Elige el caso de simulación</h2>
+    <p>Los seis casos usan la misma lógica de decisión: modelo B2C, B2B o marketplace; métricas; viabilidad operativa; y evaluación financiera.</p>
+  </div>
+
+  <div class="card">
+    <h2>📚 Casos disponibles</h2>
+    <p>Selecciona un contexto. El motor de cálculo se mantiene comparable, pero cambia la narrativa, los actores y los supuestos base del mercado.</p>
+    <div class="case-grid" id="caseGrid"></div>
+
+    <div id="case-error" class="feedback-box danger" style="display:none;margin-top:12px">
+      <strong>⚠ Caso no seleccionado</strong>Debes seleccionar un caso para continuar.
+    </div>
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-secondary" onclick="goTo('screen-participantes')">← Volver</button>
+    <button class="btn btn-primary" onclick="submitCaseSelection()">Continuar al contexto →</button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     PANTALLA 1: CONTEXTO DEL CASO
+     ============================================================ -->
+<div class="screen" id="screen-caso">
+  <div class="card" id="case-context-card">
+    <h2 id="case-title">📌 El caso seleccionado</h2>
+    <p id="case-description"></p>
+    <p id="case-logic"></p>
+    <table class="sim-table" id="case-actors-table"></table>
+    <div class="feedback-box info" id="case-market-box"></div>
+  </div>
+
+  <div class="card">
+    <h3>Tu misión como equipo gerencial</h3>
+    <p id="case-mission">Debes elegir un modelo de negocio, definir cómo mides el éxito, optimizar la operación y decidir si el proyecto merece escalarse. Al final recibirás un puntaje sobre 100 y retroalimentación pedagógica.</p>
+    <p><strong>Recuerda:</strong> una innovación no se justifica solo por ser novedosa. Debe ser viable, deseable y financieramente conveniente.</p>
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-secondary" onclick="goTo('screen-seleccion-caso')">← Cambiar caso</button>
+    <button class="btn btn-primary" onclick="startRound1()">Ir a Ronda 1 →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 2: RONDA 1 — MODELO DE NEGOCIO
+     ============================================================ -->
+<div class="screen" id="screen-ronda1">
+  <div class="round-header">
+    <div class="round-num">RONDA 1 DE 4</div>
+    <h2>Modelo de negocio</h2>
+    <p>Define quién es tu cliente, qué valor le entregas y cómo generas ingresos.</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:25%"></div></div>
+
+  <!-- Modelo de ingresos -->
+  <div class="card">
+    <h3>1. ¿Cuál es tu modelo de ingresos?</h3>
+    <p>Este es el fundamento de tu estrategia de monetización.</p>
+    <div class="option-grid cols3" id="modeloGrid">
+      <div class="option-card" onclick="selectOption('modelo','b2c',this)">
+        <div class="option-title">B2C Freemium</div>
+        <div class="option-desc">La plataforma crece con estudiantes y monetiza con usuarios premium.</div>
+        <div class="option-risk">⚠ Riesgo: muchas descargas sin conversión</div>
+      </div>
+      <div class="option-card" onclick="selectOption('modelo','b2b',this)">
+        <div class="option-title">B2B Institucional</div>
+        <div class="option-desc">La universidad paga por la plataforma como servicio institucional.</div>
+        <div class="option-risk">⚠ Riesgo: ciclo de venta lento y costoso</div>
+      </div>
+      <div class="option-card" onclick="selectOption('modelo','marketplace',this)">
+        <div class="option-title">Marketplace</div>
+        <div class="option-desc">Comercios pagan comisiones o promociones dentro de la plataforma.</div>
+        <div class="option-risk">⚠ Riesgo: requiere masa crítica bilateral</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Segmento -->
+  <div class="card">
+    <h3>2. ¿Cuál es tu segmento prioritario?</h3>
+    <div class="option-grid cols3" id="segmentoGrid">
+      <div class="option-card" onclick="selectOption('segmento','estudiantes',this)">
+        <div class="option-title">🎓 Estudiantes</div>
+        <div class="option-desc">Volumen alto, disposición a pagar baja. Crecimiento rápido pero difícil monetización.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('segmento','universidades',this)">
+        <div class="option-title">🏛️ Universidades</div>
+        <div class="option-desc">Ticket alto, proceso de compra largo. Requiere propuesta de valor institucional.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('segmento','comercios',this)">
+        <div class="option-title">🛒 Comercios aliados</div>
+        <div class="option-desc">Requieren masa crítica previa de usuarios. Ingresos por comisión.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Propuesta de valor -->
+  <div class="card">
+    <h3>3. ¿Cuál es tu propuesta de valor dominante?</h3>
+    <div class="option-grid" id="propuestaGrid">
+      <div class="option-card" onclick="selectOption('propuesta','conveniencia',this)">
+        <div class="option-title">⚡ Conveniencia</div>
+        <div class="option-desc">Todo en un lugar: reservas, eventos, beneficios. Reduce fricción del campus.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('propuesta','ahorro',this)">
+        <div class="option-title">💰 Ahorro</div>
+        <div class="option-desc">Descuentos y beneficios económicos para estudiantes con comercios aliados.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('propuesta','engagement',this)">
+        <div class="option-title">🤝 Engagement institucional</div>
+        <div class="option-desc">Aumenta la participación estudiantil y reduce la deserción.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('propuesta','datos',this)">
+        <div class="option-title">📊 Datos para gestión</div>
+        <div class="option-desc">Analytics de participación para decisiones de la universidad.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card justification-card">
+    <h3>✍️ Justificación de decisiones — Ronda 1</h3>
+    <p>Antes de calcular los resultados, expliquen el racional de su decisión: por qué eligieron ese modelo de ingresos, segmento prioritario y propuesta de valor. La justificación debe tener al menos <strong>300 caracteres</strong>.</p>
+    <textarea class="sim-textarea" id="just-r1" oninput="updateJustificationCounter('r1')" placeholder="Ejemplo: Elegimos este modelo porque el caso muestra que... Además, priorizamos este segmento dado que..."></textarea>
+    <div class="char-counter" id="just-r1-counter">0 / 300 caracteres mínimos</div>
+    <div id="just-r1-error" class="feedback-box danger" style="display:none;margin-top:10px">
+      <strong>⚠ Justificación insuficiente</strong>Debes escribir al menos 300 caracteres para ver los resultados.
+    </div>
+  </div>
+
+  <div id="r1-error" class="feedback-box danger" style="display:none">
+    <strong>⚠ Decisión incompleta</strong>Debes seleccionar una opción en cada sección antes de continuar.
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-primary" onclick="submitRonda1()">Ver resultados →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 3: RESULTADOS RONDA 1
+     ============================================================ -->
+<div class="screen" id="screen-res1">
+  <div class="round-header" style="background:linear-gradient(135deg,#065f46,#16a34a)">
+    <div class="round-num">RESULTADOS — RONDA 1</div>
+    <h2>Coherencia del modelo de negocio</h2>
+    <p>Aquí ves el impacto inicial de tus decisiones.</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:25%"></div></div>
+
+  <div id="res1-feedback"></div>
+
+  <div class="card">
+    <h3>📊 Indicadores iniciales</h3>
+    <div class="dashboard-grid" id="res1-kpis"></div>
+  </div>
+
+  <div class="card" id="res1-coherencia">
+    <h3>🧩 Análisis de coherencia del modelo</h3>
+    <div id="res1-coherencia-texto"></div>
+  </div>
+
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-primary" onclick="goTo('screen-ronda2')">Ir a Ronda 2 →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 4: RONDA 2 — MÉTRICAS
+     ============================================================ -->
+<div class="screen" id="screen-ronda2">
+  <div class="round-header" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)">
+    <div class="round-num">RONDA 2 DE 4</div>
+    <h2>Métricas y aprendizaje</h2>
+    <p>Elige qué mides. Las métricas que eliges determinarán la calidad de tus decisiones futuras.</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:50%"></div></div>
+
+  <div class="card">
+    <h3>📌 ¿Qué son las métricas vanidosas?</h3>
+    <p>Las métricas <strong>vanidosas</strong> hacen que el proyecto parezca exitoso sin revelar si el modelo de negocio funciona. Las métricas <strong>accionables</strong> te ayudan a decidir si pivotear, optimizar o escalar.</p>
+    <div class="feedback-box warn">
+      <strong>⚠ Advertencia pedagógica</strong>
+      Un equipo que elige predominantemente métricas vanidosas puede sobreestimar su desempeño y tomar decisiones equivocadas.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Selecciona tus 3 métricas prioritarias</h3>
+    <p style="font-size:.88rem;color:#6b7280;margin-bottom:12px">Puedes seleccionar hasta 3. Las etiquetas indican si son vanidosas (rojo) o accionables (verde).</p>
+    <div class="metric-list" id="metricasList"></div>
+    <div id="r2-error" class="feedback-box danger" style="display:none;margin-top:10px">
+      <strong>⚠ Selección incompleta</strong>Selecciona exactamente 3 métricas para continuar.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Experimento de validación</h3>
+    <p>¿Cómo validarás que tu propuesta de valor funciona este trimestre? Cada experimento tiene un alcance distinto y responde a un objetivo de negocio específico.</p>
+    <div class="option-grid" id="experimentoGrid">
+      <div class="option-card" onclick="selectOption('experimento','landing',this)">
+        <div class="option-title">🌐 Landing page con formulario</div>
+        <div class="option-desc"><strong>Alcance:</strong> página simple con propuesta de valor y registro de interesados.<br><strong>Objetivo de negocio:</strong> medir intención de uso inicial y claridad del mensaje antes de invertir en desarrollo.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','piloto',this)">
+        <div class="option-title">🎯 Piloto con 200 usuarios reales</div>
+        <div class="option-desc"><strong>Alcance:</strong> prueba limitada con usuarios reales usando una versión funcional del servicio.<br><strong>Objetivo de negocio:</strong> medir activación, retención y uso efectivo en condiciones cercanas al mercado.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','entrevistas',this)">
+        <div class="option-title">🗣️ Entrevistas en profundidad</div>
+        <div class="option-desc"><strong>Alcance:</strong> conversaciones estructuradas con usuarios, clientes o aliados clave.<br><strong>Objetivo de negocio:</strong> comprender dolores, barreras de adopción y razones detrás del abandono o baja conversión.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','ab',this)">
+        <div class="option-title">🧪 Prueba A/B de precios</div>
+        <div class="option-desc"><strong>Alcance:</strong> comparar dos niveles de precio, planes o mensajes de monetización.<br><strong>Objetivo de negocio:</strong> validar disposición a pagar y estimar el impacto del precio sobre conversión e ingresos.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','concierge',this)">
+        <div class="option-title">🤝 Concierge MVP</div>
+        <div class="option-desc"><strong>Alcance:</strong> entregar manualmente el servicio a un grupo pequeño antes de automatizarlo.<br><strong>Objetivo de negocio:</strong> validar valor percibido, flujo de servicio y disposición a pagar con bajo desarrollo tecnológico.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','smoke',this)">
+        <div class="option-title">💨 Smoke test de demanda</div>
+        <div class="option-desc"><strong>Alcance:</strong> campaña breve con anuncios, correo o lista de espera para medir respuesta del mercado.<br><strong>Objetivo de negocio:</strong> estimar demanda, costo de adquisición y atractivo del segmento antes de lanzar.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','onboarding',this)">
+        <div class="option-title">🧭 Prueba de onboarding y activación</div>
+        <div class="option-desc"><strong>Alcance:</strong> usuarios prueban el primer recorrido, registro o prototipo navegable.<br><strong>Objetivo de negocio:</strong> identificar fricciones tempranas y mejorar la tasa de activación inicial.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('experimento','preventa',this)">
+        <div class="option-title">📄 Preventa o carta de intención</div>
+        <div class="option-desc"><strong>Alcance:</strong> solicitar compromisos, preórdenes o cartas de intención a clientes potenciales.<br><strong>Objetivo de negocio:</strong> validar monetización, urgencia de compra y probabilidad real de cierre comercial.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card justification-card">
+    <h3>✍️ Justificación de decisiones — Ronda 2</h3>
+    <p>Antes de calcular los resultados, expliquen el racional de su decisión: por qué seleccionaron esas métricas y ese experimento de validación. Deben conectar la decisión con aprendizaje, evidencia y calidad de la información. Mínimo <strong>300 caracteres</strong>.</p>
+    <textarea class="sim-textarea" id="just-r2" oninput="updateJustificationCounter('r2')" placeholder="Ejemplo: Seleccionamos estas métricas porque permiten observar... El experimento elegido aporta evidencia sobre..."></textarea>
+    <div class="char-counter" id="just-r2-counter">0 / 300 caracteres mínimos</div>
+    <div id="just-r2-error" class="feedback-box danger" style="display:none;margin-top:10px">
+      <strong>⚠ Justificación insuficiente</strong>Debes escribir al menos 300 caracteres para ver los resultados.
+    </div>
+  </div>
+
+  <div id="r2-exp-error" class="feedback-box danger" style="display:none">
+    <strong>⚠ Decisión incompleta</strong>Selecciona un experimento de validación.
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-primary" onclick="submitRonda2()">Ver resultados →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 5: RESULTADOS RONDA 2
+     ============================================================ -->
+<div class="screen" id="screen-res2">
+  <div class="round-header" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)">
+    <div class="round-num">RESULTADOS — RONDA 2</div>
+    <h2>Calidad del aprendizaje</h2>
+    <p>Tus métricas determinan qué tan bien puedes decidir.</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:50%"></div></div>
+
+  <div id="res2-feedback"></div>
+
+  <div class="card">
+    <h3>📊 Métricas seleccionadas</h3>
+    <div id="res2-metricas"></div>
+  </div>
+
+  <div class="card">
+    <h3>📈 Indicadores actualizados</h3>
+    <div class="dashboard-grid" id="res2-kpis"></div>
+  </div>
+
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-primary" onclick="goTo('screen-ronda3')">Ir a Ronda 3 →</button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     PANTALLA 6: RONDA 3 — VIABILIDAD OPERATIVA
+     ============================================================ -->
+<div class="screen" id="screen-ronda3">
+  <div class="round-header" style="background:linear-gradient(135deg,#7c2d12,#ea580c)">
+    <div class="round-num">RONDA 3 DE 4</div>
+    <h2>Viabilidad operativa</h2>
+    <p>Define precio, marketing, desarrollo y soporte. Aquí se calcula si el negocio puede sostenerse.</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:75%"></div></div>
+
+  <div class="card">
+    <h3>Decisiones operativas y comerciales</h3>
+    <p style="font-size:.88rem;color:#6b7280;margin-bottom:16px">Cada decisión afecta los costos, los ingresos, la adopción, el CAC, la retención y el punto de equilibrio. Seleccionen una alternativa en cada campo.</p>
+
+    <div class="decision-grid">
+      <div class="decision-field">
+        <label class="select-label">💰 Nivel de precio</label>
+        <select class="sim-select" id="sel-precio">
+          <option value="">-- Selecciona --</option>
+          <option value="bajo">Bajo — Mayor adopción, margen reducido</option>
+          <option value="medio">Medio — Balance entre adopción y captura de valor</option>
+          <option value="alto">Alto — Menor adopción, margen elevado</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">📣 Inversión en marketing</label>
+        <select class="sim-select" id="sel-marketing">
+          <option value="">-- Selecciona --</option>
+          <option value="conservador">Conservador — Bajo CAC, crecimiento lento</option>
+          <option value="moderado">Moderado — Balance entre adquisición y costo</option>
+          <option value="agresivo">Agresivo — Alto CAC, crecimiento rápido</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">🛠️ Nivel de desarrollo de producto</label>
+        <select class="sim-select" id="sel-desarrollo">
+          <option value="">-- Selecciona --</option>
+          <option value="basico">Básico — Costo bajo, funcionalidades mínimas</option>
+          <option value="intermedio">Intermedio — Equilibrio costo/calidad</option>
+          <option value="avanzado">Avanzado — Alto costo, mayor retención</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">🎧 Nivel de soporte</label>
+        <select class="sim-select" id="sel-soporte">
+          <option value="">-- Selecciona --</option>
+          <option value="bajo">Bajo costo — Soporte básico por FAQ</option>
+          <option value="estandar">Estándar — Chat y correo en horario hábil</option>
+          <option value="premium">Premium — 24/7, satisfacción alta</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">🏷️ Descuento de lanzamiento</label>
+        <select class="sim-select" id="sel-descuento">
+          <option value="">-- Selecciona --</option>
+          <option value="0">Sin descuento (0%) — Protege el margen</option>
+          <option value="20">Descuento del 20% — Impulsa conversión inicial</option>
+          <option value="40">Descuento del 40% — Máxima adopción, menor margen</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">🧭 Canal de adquisición prioritario</label>
+        <select class="sim-select" id="sel-canal">
+          <option value="">-- Selecciona --</option>
+          <option value="organico">Orgánico / comunidad — Menor CAC, crecimiento gradual</option>
+          <option value="performance">Publicidad de performance — Mayor alcance, CAC más alto</option>
+          <option value="alianzas">Alianzas de distribución — Crecimiento medio, CAC balanceado</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">🔁 Estrategia de retención</label>
+        <select class="sim-select" id="sel-retencionEstrategia">
+          <option value="">-- Selecciona --</option>
+          <option value="reactiva">Reactiva — Bajo costo, retención limitada</option>
+          <option value="lifecycle">Lifecycle / CRM — Seguimiento sistemático del usuario</option>
+          <option value="comunidad">Comunidad y fidelización — Mayor costo, retención superior</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">⚙️ Capacidad operativa</label>
+        <select class="sim-select" id="sel-capacidadOperativa">
+          <option value="">-- Selecciona --</option>
+          <option value="lean">Lean — Costos bajos, riesgo de menor calidad</option>
+          <option value="equilibrada">Equilibrada — Capacidad acorde al crecimiento</option>
+          <option value="escalable">Escalable — Mayor costo fijo, mejor preparación para crecer</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">📊 Uso de analítica de negocio</label>
+        <select class="sim-select" id="sel-analitica">
+          <option value="">-- Selecciona --</option>
+          <option value="basica">Básica — Reportes simples, bajo costo</option>
+          <option value="accionable">Accionable — Dashboards para conversión, CAC y retención</option>
+          <option value="predictiva">Predictiva — Mayor inversión, mejor anticipación de churn</option>
+        </select>
+      </div>
+
+      <div class="decision-field">
+        <label class="select-label">🤝 Estrategia de alianzas</label>
+        <select class="sim-select" id="sel-alianzas">
+          <option value="">-- Selecciona --</option>
+          <option value="ninguna">Sin alianzas — Menor complejidad, menor alcance</option>
+          <option value="comerciales">Alianzas comerciales — Más demanda y mejor CAC</option>
+          <option value="institucionales">Alianzas institucionales — Alto potencial, mayor coordinación</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card justification-card">
+    <h3>✍️ Justificación de decisiones — Ronda 3</h3>
+    <p>Antes de calcular los resultados, expliquen el racional de su decisión: por qué definieron ese precio, inversión en marketing, desarrollo, soporte, descuento, canal de adquisición, retención, capacidad operativa, analítica y alianzas. Deben relacionar la decisión con costos, ingresos, margen, CAC, retención y punto de equilibrio. Mínimo <strong>300 caracteres</strong>.</p>
+    <textarea class="sim-textarea" id="just-r3" oninput="updateJustificationCounter('r3')" placeholder="Ejemplo: Definimos este precio porque... El canal de adquisición y la estrategia de retención buscan... Esta combinación afecta el CAC, el margen y el punto de equilibrio de la siguiente forma..."></textarea>
+    <div class="char-counter" id="just-r3-counter">0 / 300 caracteres mínimos</div>
+    <div id="just-r3-error" class="feedback-box danger" style="display:none;margin-top:10px">
+      <strong>⚠ Justificación insuficiente</strong>Debes escribir al menos 300 caracteres para ver los resultados.
+    </div>
+  </div>
+
+  <div id="r3-error" class="feedback-box danger" style="display:none">
+    <strong>⚠ Decisión incompleta</strong>Debes seleccionar una opción en cada campo antes de continuar.
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-primary" onclick="submitRonda3()">Ver resultados →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 7: RESULTADOS RONDA 3
+     ============================================================ -->
+<div class="screen" id="screen-res3">
+  <div class="round-header" style="background:linear-gradient(135deg,#7c2d12,#ea580c)">
+    <div class="round-num">RESULTADOS — RONDA 3</div>
+    <h2>Punto de equilibrio y utilidad</h2>
+    <p>¿El modelo puede sostenerse operativamente?</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:75%"></div></div>
+
+  <div id="res3-feedback"></div>
+
+  <div class="card">
+    <h3>📊 Viabilidad operativa</h3>
+    <div class="dashboard-grid" id="res3-kpis"></div>
+  </div>
+
+  <div class="card">
+    <h3>📈 Todas las métricas de negocio</h3>
+    <div class="dashboard-grid" id="res3-kpis2"></div>
+  </div>
+
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-primary" onclick="goTo('screen-ronda4')">Ir a Ronda 4 →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 8: RONDA 4 — DECISIÓN FINANCIERA
+     ============================================================ -->
+<div class="screen" id="screen-ronda4">
+  <div class="round-header" style="background:linear-gradient(135deg,#134e4a,#0f766e)">
+    <div class="round-num">RONDA 4 DE 4</div>
+    <h2>Evaluación financiera</h2>
+    <p>Con los datos del modelo, decide si el proyecto merece continuarse.</p>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:90%"></div></div>
+
+  <div class="card">
+    <h3>Proyección financiera del proyecto</h3>
+    <p>Aquí ves la evolución proyectada del flujo de caja anual y del flujo acumulado durante 4 años, basados en tus decisiones anteriores.</p>
+    <div id="r4-chart" class="financial-chart-wrap"></div>
+    <p class="projection-table-note">Detalle numérico de la proyección financiera:</p>
+    <div id="r4-flujos"></div>
+  </div>
+
+  <div class="card">
+    <h3>💹 Indicadores de evaluación financiera</h3>
+    <div class="dashboard-grid" id="r4-kpis"></div>
+  </div>
+
+  <div class="card">
+    <h3>¿Cuál es tu decisión final?</h3>
+    <p>Basándote en todos los indicadores, ¿qué recomendarías para el caso seleccionado?</p>
+    <div class="option-grid cols3" id="decisionGrid" style="margin-top:16px">
+      <div class="option-card" onclick="selectOption('decision','escalar',this)">
+        <div class="option-title">🚀 Escalar</div>
+        <div class="option-desc">Aumentar inversión, expandir a nuevos mercados y crecer el equipo.</div>
+        <div class="option-risk">Requiere VAN positivo y modelo validado.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('decision','pivotar',this)">
+        <div class="option-title">🔄 Pivotar</div>
+        <div class="option-desc">Cambiar segmento, propuesta de valor o modelo de ingresos.</div>
+        <div class="option-risk">Indicado cuando hay aprendizaje pero el modelo no funciona.</div>
+      </div>
+      <div class="option-card" onclick="selectOption('decision','abandonar',this)">
+        <div class="option-title">🛑 Abandonar</div>
+        <div class="option-desc">Detener el proyecto y liberar los recursos para otras oportunidades.</div>
+        <div class="option-risk">Válido cuando no hay viabilidad ni potencial de mejora.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="r4-error" class="feedback-box danger" style="display:none">
+    <strong>⚠ Decisión incompleta</strong>Selecciona una decisión final para continuar.
+  </div>
+
+  <div class="card justification-card">
+    <h3>✍️ Justificación de decisiones — Ronda 4</h3>
+    <p>Justifiquen la decisión final de escalar, pivotar o abandonar usando los indicadores financieros y operativos observados. Deben mencionar evidencia como VAN, TIR, PR, VAE, IVAN, B/C o punto de equilibrio. Mínimo <strong>300 caracteres</strong>.</p>
+    <textarea class="sim-textarea" id="just-r4" oninput="updateJustificationCounter('r4')" placeholder="Ejemplo: Recomendamos escalar/pivotar/abandonar porque los indicadores muestran que... El VAN/TIR/B-C sugiere... Además, el punto de equilibrio..."></textarea>
+    <div class="char-counter" id="just-r4-counter">0 / 300 caracteres mínimos</div>
+    <div id="just-r4-error" class="feedback-box danger" style="display:none;margin-top:10px">
+      <strong>⚠ Justificación insuficiente</strong>Debes escribir al menos 300 caracteres para generar el informe final.
+    </div>
+  </div>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <button class="btn btn-success" onclick="submitRonda4()">Ver informe final →</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PANTALLA 9: INFORME FINAL
+     ============================================================ -->
+<div class="screen" id="screen-final">
+  <div class="round-header" style="background:linear-gradient(135deg,#1e3a8a,#0891b2)">
+    <div class="round-num">INFORME FINAL</div>
+    <h2 id="final-title">Evaluación completa</h2>
+    <p>Resultado de tus decisiones gerenciales a lo largo de las 4 rondas.</p>
+  </div>
+
+  <!-- Puntaje -->
+  <div class="card" style="text-align:center">
+    <h3>Puntaje final</h3>
+    <div id="score-circle-wrap"></div>
+    <div id="score-label" style="font-size:1rem;color:#374151;margin-top:8px"></div>
+  </div>
+
+  <!-- Datos generales del informe -->
+  <div class="card">
+    <h3>📋 Datos generales del equipo y caso</h3>
+    <div id="final-decisiones"></div>
+  </div>
+
+  <!-- Decisiones y respuestas escritas -->
+  <div class="card">
+    <h3>🧾 Decisiones tomadas y respuestas escritas del equipo</h3>
+    <p style="font-size:.88rem;color:#6b7280;margin-bottom:10px">Este apartado integra, por ronda, las decisiones seleccionadas y el racional escrito por el equipo.</p>
+    <div id="final-justificaciones"></div>
+  </div>
+
+  <!-- Indicadores completos -->
+  <div class="card">
+    <h3>📊 Dashboard completo</h3>
+    <h4 style="font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin:10px 0 8px">Métricas de negocio</h4>
+    <div class="dashboard-grid" id="final-kpis-negocio"></div>
+    <h4 style="font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin:18px 0 8px">Viabilidad operativa</h4>
+    <div class="dashboard-grid" id="final-kpis-operativa"></div>
+    <h4 style="font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin:18px 0 8px">Evaluación financiera</h4>
+    <div class="dashboard-grid" id="final-kpis-financiera"></div>
+  </div>
+
+  <!-- Evolución financiera proyectada -->
+  <div class="card">
+    <h3>📈 Evolución financiera proyectada</h3>
+    <p style="font-size:.88rem;color:#6b7280;margin-bottom:8px">Gráfico interno generado con SVG para mostrar la evolución del flujo anual y acumulado.</p>
+    <div id="final-r4-chart" class="financial-chart-wrap"></div>
+  </div>
+
+  <!-- Recomendación -->
+  <div class="card">
+    <h3>🎯 Recomendación del simulador</h3>
+    <div id="final-recomendacion"></div>
+  </div>
+
+  <!-- Scoring breakdown -->
+  <div class="card">
+    <h3>🧮 Desglose del puntaje</h3>
+    <table class="sim-table" id="final-score-table"></table>
+  </div>
+
+  <!-- Preguntas de reflexión -->
+  <div class="card">
+    <h3>💭 Preguntas de reflexión</h3>
+    <p style="font-size:.88rem;color:#6b7280;margin-bottom:10px">Discute estas preguntas con tu equipo:</p>
+    <ol class="reflection-list">
+      <li>¿Qué decisión tuvo mayor impacto sobre la viabilidad del modelo?</li>
+      <li>¿Qué métrica parecía positiva pero no ayudaba realmente a decidir?</li>
+      <li>¿El proyecto era deseable, viable y financieramente conveniente?</li>
+      <li>¿El punto de equilibrio era alcanzable con el mercado disponible?</li>
+      <li>¿Aceptarían el proyecto usando solo el VAN?</li>
+      <li>¿Cambiaría la decisión si el capital disponible fuera limitado?</li>
+      <li>¿Qué harían distinto en una segunda simulación?</li>
+    </ol>
+  </div>
+
+  <div class="btn-row" style="justify-content:center;padding-bottom:32px">
+    <button class="btn btn-success" onclick="exportFinalPDF()">📄 Exportar informe a PDF</button>
+    <button class="btn btn-danger" onclick="resetSimulator()">🔄 Reiniciar simulador</button>
+    <button class="btn btn-secondary" onclick="openHelp()">📖 Ver fórmulas</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: AYUDA CONCEPTUAL Y FÓRMULAS
+     ============================================================ -->
+<div class="modal-overlay" id="helpModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeHelp()">✕</button>
+    <h2>📖 Ayuda conceptual y fórmulas</h2>
+
+    <h3>Ingresos</h3>
+    <div class="formula-block">Ingresos = Clientes de pago × Precio</div>
+
+    <h3>Costos totales</h3>
+    <div class="formula-block">Costos totales = Costos fijos + Costos variables + Marketing + Desarrollo + Soporte</div>
+
+    <h3>Margen de contribución</h3>
+    <div class="formula-block">Margen unitario = Precio − Costo variable unitario</div>
+
+    <h3>Punto de equilibrio</h3>
+    <div class="formula-block">PE (clientes) = Costos fijos / Margen de contribución unitario</div>
+
+    <h3>Relación Beneficio / Costo (B/C)</h3>
+    <div class="formula-block">B/C = Valor presente de beneficios / Valor presente de costos
+B/C > 1 → el proyecto genera más valor del que consume</div>
+
+    <h3>VAN — Valor Actual Neto</h3>
+    <div class="formula-block">VAN = −Inversión inicial + Σ [ Flujo_t / (1 + r)^t ]
+r = tasa de descuento, t = período
+VAN > 0 → el proyecto crea valor</div>
+
+    <h3>TIR — Tasa Interna de Retorno</h3>
+    <div class="formula-block">TIR = tasa r tal que VAN = 0
+TIR > tasa de descuento → proyecto conveniente</div>
+
+    <h3>PR — Período de Recuperación</h3>
+    <div class="formula-block">PR = período en que los flujos acumulados igualan la inversión inicial
+Menor PR → recuperación más rápida</div>
+
+    <h3>VAE — Valor Anual Equivalente</h3>
+    <div class="formula-block">VAE = VAN × [ r(1+r)^n / ((1+r)^n − 1) ]
+Útil para comparar proyectos de distinta vida útil</div>
+
+    <h3>IVAN — Índice de VAN</h3>
+    <div class="formula-block">IVAN = VAN / Inversión inicial
+IVAN > 0 → crea valor por cada peso invertido
+Útil cuando el capital disponible es limitado</div>
+
+    <h3>Métricas accionables vs. vanidosas</h3>
+    <p style="font-size:.9rem;margin:8px 0">Las <strong>métricas vanidosas</strong> (descargas, visitas, registros acumulados) pueden mejorar sin que el negocio mejore. Las <strong>métricas accionables</strong> (retención, conversión, CAC, margen) revelan si el modelo funciona y guían decisiones.</p>
+
+    <div style="text-align:right;margin-top:20px">
+      <button class="btn btn-primary" onclick="closeHelp()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT — MOTOR DEL SIMULADOR
+     ============================================================ -->
+<script>
+// ===== ESTADO GLOBAL =====
+const gameState = {
+  round: 1,
+  teamName: '',
+  participants: [],
+  selectedCaseId: null,
+  modelo: null,
+  segmento: null,
+  propuesta: null,
+  metricas: [],
+  experimento: null,
+  precio: null,
+  marketing: null,
+  desarrollo: null,
+  soporte: null,
+  descuento: null,
+  canal: null,
+  retencionEstrategia: null,
+  capacidadOperativa: null,
+  analitica: null,
+  alianzas: null,
+  decision: null,
+  justifications: { r1:'', r2:'', r3:'', r4:'' },
+  results: {
+    registeredUsers: 0, activeUsers: 0, payingCustomers: 0,
+    conversionRate: 0, retentionRate: 0, cac: 0, marginPerCustomer: 0,
+    revenue: 0, totalCosts: 0, operatingProfit: 0,
+    contributionMargin: 0, breakEvenCustomers: 0,
+    bc: 0, npv: 0, irr: 0, payback: null, vae: 0, ivan: 0,
+    score: 0
+  },
+  cashFlows: [],
+  scoreBreakdown: {}
+};
+
+// ===== PARÁMETROS BASE =====
+const BASE_DEFAULT = {
+  marketSize: 50000,
+  initialInvestment: 200000,
+  discountRate: 0.12,
+  projectLife: 4,
+  fixedBase: 40000
+};
+
+const BASE = { ...BASE_DEFAULT };
+
+// ===== CASOS DISPONIBLES =====
+const CASES = [
+  {
+    id: 'smartcampus',
+    icon: '🏫',
+    name: 'SmartCampus',
+    sector: 'EdTech / Educación superior',
+    shortDescription: 'Plataforma digital para beneficios estudiantiles, reservas de espacios, eventos, descuentos y analítica de participación universitaria.',
+    logic: 'La decisión central es elegir si la solución se monetiza con estudiantes, universidades o comercios aliados.',
+    marketSize: 50000,
+    initialInvestment: 200000,
+    discountRate: 0.12,
+    fixedBase: 40000,
+    actors: [
+      ['🎓 Estudiantes', 'Usuarios finales', 'Suscripciones premium, conversión freemium'],
+      ['🏛️ Universidades', 'Clientes institucionales', 'Licencia anual, precio alto'],
+      ['🛒 Comercios aliados', 'Proveedores de beneficios', 'Comisiones, pago por promoción']
+    ],
+    segments: {
+      estudiantes: { icon:'🎓', title:'Estudiantes', desc:'Volumen alto, disposición a pagar baja. Crecimiento rápido pero monetización desafiante.' },
+      universidades: { icon:'🏛️', title:'Universidades', desc:'Ticket alto, proceso de compra largo. Requiere propuesta de valor institucional.' },
+      comercios: { icon:'🛒', title:'Comercios aliados', desc:'Necesitan masa crítica previa de usuarios. Ingresos por comisión o promoción.' }
+    },
+    proposals: {
+      conveniencia: { icon:'⚡', title:'Conveniencia', desc:'Todo en un lugar: reservas, eventos y beneficios. Reduce fricción en la vida de campus.' },
+      ahorro: { icon:'💰', title:'Ahorro', desc:'Descuentos y beneficios económicos para estudiantes.' },
+      engagement: { icon:'🤝', title:'Engagement institucional', desc:'Aumenta participación estudiantil y reduce riesgo de desconexión.' },
+      datos: { icon:'📊', title:'Datos para gestión', desc:'Analítica de participación para decisiones universitarias.' }
+    }
+  },
+  {
+    id: 'saludactiva',
+    icon: '🩺',
+    name: 'SaludActiva',
+    sector: 'HealthTech / Bienestar preventivo',
+    shortDescription: 'Aplicación de seguimiento preventivo que combina hábitos saludables, alertas tempranas, teleorientación y reportes para organizaciones.',
+    logic: 'La decisión central es elegir si se monetiza con usuarios finales, instituciones de salud/empresas o aliados del ecosistema wellness.',
+    marketSize: 80000,
+    initialInvestment: 260000,
+    discountRate: 0.13,
+    fixedBase: 52000,
+    actors: [
+      ['🧑‍⚕️ Usuarios/pacientes', 'Usuarios finales', 'Plan premium, seguimiento personalizado'],
+      ['🏥 Clínicas o empresas', 'Clientes institucionales', 'Licencia por población cubierta'],
+      ['🏋️ Aliados wellness', 'Proveedores complementarios', 'Comisiones por derivación o promoción']
+    ],
+    segments: {
+      estudiantes: { icon:'🧑‍⚕️', title:'Usuarios/pacientes', desc:'Volumen alto, sensibilidad al precio y retención crítica.' },
+      universidades: { icon:'🏥', title:'Clínicas o empresas', desc:'Ticket alto, mayor exigencia de evidencia y ventas consultivas.' },
+      comercios: { icon:'🏋️', title:'Aliados wellness', desc:'Ingresos por red de gimnasios, farmacias o prestadores preventivos.' }
+    },
+    proposals: {
+      conveniencia: { icon:'⚡', title:'Acceso simple a orientación', desc:'Centraliza hábitos, alertas y recomendaciones en una experiencia fácil de usar.' },
+      ahorro: { icon:'💰', title:'Prevención de costos', desc:'Reduce costos futuros al anticipar riesgos y promover hábitos saludables.' },
+      engagement: { icon:'🤝', title:'Adherencia y seguimiento', desc:'Aumenta la continuidad de uso mediante recordatorios, retos y acompañamiento.' },
+      datos: { icon:'📊', title:'Analítica poblacional', desc:'Entrega reportes agregados para gestionar programas de salud preventiva.' }
+    }
+  },
+  {
+    id: 'ecopack',
+    icon: '♻️',
+    name: 'EcoPack Circular',
+    sector: 'Sostenibilidad / Packaging circular',
+    shortDescription: 'Solución de envases reutilizables y trazables para comercios, consumidores y empresas que buscan reducir residuos de un solo uso.',
+    logic: 'La decisión central es elegir si se monetiza con consumidores, empresas compradoras o una red de comercios/proveedores.',
+    marketSize: 60000,
+    initialInvestment: 240000,
+    discountRate: 0.12,
+    fixedBase: 48000,
+    actors: [
+      ['🛍️ Consumidores', 'Usuarios finales', 'Membresía, depósitos o beneficios por reutilización'],
+      ['🏢 Empresas y retail', 'Clientes institucionales', 'Contratos de suministro y trazabilidad'],
+      ['🏪 Comercios aliados', 'Red de adopción', 'Comisiones, reposición o servicios logísticos']
+    ],
+    segments: {
+      estudiantes: { icon:'🛍️', title:'Consumidores conscientes', desc:'Volumen alto, adopción sensible a conveniencia y precio.' },
+      universidades: { icon:'🏢', title:'Empresas y retail', desc:'Ticket alto, decisión formal y exigencias de cumplimiento ambiental.' },
+      comercios: { icon:'🏪', title:'Comercios aliados', desc:'Requiere red suficiente para que la reutilización sea conveniente.' }
+    },
+    proposals: {
+      conveniencia: { icon:'⚡', title:'Retorno fácil de envases', desc:'Reduce fricción mediante puntos de devolución y trazabilidad simple.' },
+      ahorro: { icon:'💰', title:'Menor costo por ciclo', desc:'Disminuye gasto recurrente en packaging desechable cuando escala el uso.' },
+      engagement: { icon:'🤝', title:'Participación ambiental', desc:'Convierte la reducción de residuos en una experiencia visible para usuarios y comercios.' },
+      datos: { icon:'📊', title:'Trazabilidad e impacto', desc:'Mide ciclos de reutilización, residuos evitados y desempeño ambiental.' }
+    }
+  },
+  {
+    id: 'localfood',
+    icon: '🥕',
+    name: 'LocalFood Hub',
+    sector: 'FoodTech / Comercio local',
+    shortDescription: 'Marketplace que conecta productores locales, restaurantes, consumidores y puntos de entrega para mejorar acceso a alimentos frescos.',
+    logic: 'La decisión central es elegir si se monetiza con consumidores, compradores institucionales o productores/restaurantes aliados.',
+    marketSize: 70000,
+    initialInvestment: 220000,
+    discountRate: 0.14,
+    fixedBase: 46000,
+    actors: [
+      ['👨‍👩‍👧 Consumidores', 'Usuarios finales', 'Suscripción, pedidos recurrentes o membresía'],
+      ['🍽️ Restaurantes/empresas', 'Clientes institucionales', 'Compras programadas y contratos'],
+      ['🌱 Productores aliados', 'Oferta del marketplace', 'Comisiones por transacción y servicios']
+    ],
+    segments: {
+      estudiantes: { icon:'👨‍👩‍👧', title:'Consumidores urbanos', desc:'Volumen alto, sensibilidad a precio, conveniencia y tiempos de entrega.' },
+      universidades: { icon:'🍽️', title:'Restaurantes o empresas', desc:'Ticket mayor y demanda recurrente, pero requiere confiabilidad logística.' },
+      comercios: { icon:'🌱', title:'Productores aliados', desc:'Necesita masa crítica de oferta y demanda para sostener el marketplace.' }
+    },
+    proposals: {
+      conveniencia: { icon:'⚡', title:'Compra local sin fricción', desc:'Integra catálogo, pago y entrega en una experiencia simple.' },
+      ahorro: { icon:'💰', title:'Mejor precio por cadena corta', desc:'Reduce intermediación y puede mejorar valor para comprador y productor.' },
+      engagement: { icon:'🤝', title:'Comunidad alimentaria local', desc:'Fortalece vínculo entre productores, consumidores y comercios.' },
+      datos: { icon:'📊', title:'Predicción de demanda', desc:'Usa datos de pedidos para planificar oferta, logística y desperdicio.' }
+    }
+  },
+  {
+    id: 'skillbridge',
+    icon: '💼',
+    name: 'SkillBridge',
+    sector: 'HRTech / Empleabilidad y talento',
+    shortDescription: 'Plataforma que conecta estudiantes y profesionales junior con rutas de aprendizaje, mentorías, desafíos empresariales y oportunidades laborales.',
+    logic: 'La decisión central es elegir si se monetiza con usuarios, instituciones/empresas o una red de mentores y proveedores de formación.',
+    marketSize: 90000,
+    initialInvestment: 210000,
+    discountRate: 0.12,
+    fixedBase: 42000,
+    actors: [
+      ['🎓 Talento junior', 'Usuarios finales', 'Planes premium, certificaciones o mentorías'],
+      ['🏢 Empresas/instituciones', 'Clientes institucionales', 'Licencias, reclutamiento o programas de talento'],
+      ['🧑‍🏫 Mentores y bootcamps', 'Aliados de oferta', 'Comisiones por cursos, mentorías o colocación']
+    ],
+    segments: {
+      estudiantes: { icon:'🎓', title:'Talento junior', desc:'Volumen alto, alta necesidad de empleabilidad, disposición a pagar variable.' },
+      universidades: { icon:'🏢', title:'Empresas o instituciones', desc:'Ticket alto si el producto resuelve reclutamiento, upskilling o empleabilidad.' },
+      comercios: { icon:'🧑‍🏫', title:'Mentores y bootcamps', desc:'Modelo de red que requiere oferta de calidad y demanda suficiente.' }
+    },
+    proposals: {
+      conveniencia: { icon:'⚡', title:'Ruta clara de empleabilidad', desc:'Integra diagnóstico, aprendizaje, desafíos y oportunidades en un solo flujo.' },
+      ahorro: { icon:'💰', title:'Menor costo de búsqueda', desc:'Reduce costos de formación, reclutamiento o intermediación.' },
+      engagement: { icon:'🤝', title:'Mentoría y acompañamiento', desc:'Aumenta participación mediante feedback, comunidad y seguimiento.' },
+      datos: { icon:'📊', title:'Analytics de talento', desc:'Mide habilidades, avance y ajuste entre perfiles y oportunidades.' }
+    }
+  },
+  {
+    id: 'greenmove',
+    icon: '🚌',
+    name: 'GreenMove',
+    sector: 'MobilityTech / Movilidad sostenible',
+    shortDescription: 'Plataforma de movilidad sostenible que integra viajes compartidos, micromovilidad, convenios corporativos y analítica de desplazamientos.',
+    logic: 'La decisión central es elegir si se monetiza con usuarios finales, organizaciones compradoras o una red de operadores de movilidad.',
+    marketSize: 75000,
+    initialInvestment: 250000,
+    discountRate: 0.13,
+    fixedBase: 50000,
+    actors: [
+      ['🚲 Usuarios urbanos', 'Usuarios finales', 'Membresía, suscripción premium o pago por uso'],
+      ['🏢 Empresas/municipios', 'Clientes institucionales', 'Licencias, convenios de movilidad y reportes de impacto'],
+      ['🛴 Operadores aliados', 'Oferta del ecosistema', 'Comisiones por viaje, integración o promoción']
+    ],
+    segments: {
+      estudiantes: { icon:'🚲', title:'Usuarios urbanos', desc:'Volumen alto, adopción sensible a precio, disponibilidad y conveniencia.' },
+      universidades: { icon:'🏢', title:'Empresas o municipios', desc:'Ticket alto si la solución reduce congestión, emisiones o costos de transporte.' },
+      comercios: { icon:'🛴', title:'Operadores aliados', desc:'Requiere masa crítica de usuarios y oferta suficiente para sostener la red.' }
+    },
+    proposals: {
+      conveniencia: { icon:'⚡', title:'Movilidad integrada', desc:'Centraliza rutas, reservas, pagos y opciones de transporte en una sola experiencia.' },
+      ahorro: { icon:'💰', title:'Menor costo de traslado', desc:'Optimiza viajes y reduce gastos para usuarios u organizaciones.' },
+      engagement: { icon:'🤝', title:'Cambio de hábitos', desc:'Incentiva transporte compartido, uso recurrente y participación en desafíos sostenibles.' },
+      datos: { icon:'📊', title:'Analítica de movilidad', desc:'Mide desplazamientos, emisiones evitadas, demanda y desempeño operacional.' }
+    }
+  }
+
+];
+
+function currentCase() {
+  return CASES.find(c => c.id === gameState.selectedCaseId) || CASES[0];
+}
+
+function applyCaseSettings() {
+  const c = currentCase();
+  BASE.marketSize = c.marketSize;
+  BASE.initialInvestment = c.initialInvestment;
+  BASE.discountRate = c.discountRate;
+  BASE.projectLife = BASE_DEFAULT.projectLife;
+  BASE.fixedBase = c.fixedBase;
+  document.title = `MetricsLab — ${c.name}`;
+}
+
+// ===== DEFINICIÓN DE MÉTRICAS =====
+const METRICAS_LISTA = [
+  { id:'descargas',    label:'Descargas totales',         tipo:'vanidosa',    impacto:'Aumenta percepción de crecimiento, pero no informa sobre monetización.' },
+  { id:'visitas',      label:'Visitas a la plataforma',   tipo:'vanidosa',    impacto:'No indica si los usuarios completan acciones clave.' },
+  { id:'registros',    label:'Usuarios registrados acumulados', tipo:'vanidosa', impacto:'Incluye usuarios inactivos; infla la percepción.' },
+  { id:'seguidores',   label:'Seguidores en redes',       tipo:'vanidosa',    impacto:'No correlaciona con ingresos directamente.' },
+  { id:'activos',      label:'Usuarios activos (DAU/MAU)', tipo:'accionable', impacto:'Revela adopción real y uso efectivo de la plataforma.' },
+  { id:'conversion',   label:'Tasa de conversión a pago', tipo:'accionable', impacto:'Mide directamente la monetización del modelo.' },
+  { id:'retencion',    label:'Retención (churn rate)',    tipo:'accionable',  impacto:'Indica valor percibido y sostenibilidad a largo plazo.' },
+  { id:'cac',          label:'CAC por canal',             tipo:'accionable',  impacto:'Permite optimizar la eficiencia del marketing.' },
+  { id:'margen',       label:'Margen por cliente',        tipo:'accionable',  impacto:'Evalúa la rentabilidad unitaria del modelo.' },
+  { id:'activacion',   label:'Tasa de activación',       tipo:'accionable',  impacto:'Mide si los usuarios nuevos completan el flujo clave.' }
+];
+
+// ===== EXPERIMENTOS DE VALIDACIÓN =====
+const EXPERIMENTOS_CONFIG = {
+  landing: {
+    label: 'Landing page con formulario', bonus: 0.02, score: 2,
+    feedbackTitle: '🌐 Landing page con formulario',
+    feedbackText: 'Elegiste una prueba rápida y de bajo costo. Es útil para medir interés inicial, aunque entrega una señal débil sobre uso real o monetización.'
+  },
+  piloto: {
+    label: 'Piloto con 200 usuarios reales', bonus: 0.08, score: 5,
+    feedbackTitle: '🎯 Piloto con usuarios reales',
+    feedbackText: 'Elegiste el experimento de mayor costo pero también de mayor validez. Las tasas de activación y retención reales mejoran tu modelo.'
+  },
+  entrevistas: {
+    label: 'Entrevistas en profundidad', bonus: 0.05, score: 3,
+    feedbackTitle: '🗣️ Entrevistas en profundidad',
+    feedbackText: 'Elegiste un experimento cualitativo fuerte para entender dolores, barreras y razones de abandono. Es útil para orientar pivotes y rediseño de propuesta de valor.'
+  },
+  ab: {
+    label: 'Prueba A/B de precios', bonus: 0.06, score: 4,
+    feedbackTitle: '🧪 Prueba A/B de precios',
+    feedbackText: 'Elegiste un experimento directamente conectado con monetización. Permite validar disposición a pagar y ajustar conversión e ingresos.'
+  },
+  concierge: {
+    label: 'Concierge MVP', bonus: 0.07, score: 4,
+    feedbackTitle: '🤝 Concierge MVP',
+    feedbackText: 'Elegiste entregar el servicio manualmente antes de automatizar. Es una buena forma de validar valor percibido y flujo operativo con baja inversión tecnológica.'
+  },
+  smoke: {
+    label: 'Smoke test de demanda', bonus: 0.04, score: 3,
+    feedbackTitle: '💨 Smoke test de demanda',
+    feedbackText: 'Elegiste una prueba útil para estimar demanda y eficiencia de adquisición. Ayuda a validar el atractivo del segmento antes de comprometer recursos mayores.'
+  },
+  onboarding: {
+    label: 'Prueba de onboarding y activación', bonus: 0.06, score: 4,
+    feedbackTitle: '🧭 Prueba de onboarding y activación',
+    feedbackText: 'Elegiste un experimento enfocado en reducir fricción inicial. Mejora la calidad del aprendizaje sobre activación y experiencia temprana del usuario.'
+  },
+  preventa: {
+    label: 'Preventa o carta de intención', bonus: 0.07, score: 5,
+    feedbackTitle: '📄 Preventa o carta de intención',
+    feedbackText: 'Elegiste una señal fuerte de monetización. Los compromisos, preórdenes o cartas de intención ayudan a validar urgencia de compra y probabilidad de cierre.'
+  }
+};
+
+function getExperimentConfig(id) {
+  return EXPERIMENTOS_CONFIG[id] || { label: id || 'No seleccionado', bonus: 0, score: 0, feedbackTitle: 'Experimento', feedbackText: '' };
+}
+
+// ===== NAVEGACIÓN =====
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  const header = document.getElementById('simHeader');
+  const badge  = document.getElementById('headerBadge');
+  if (screenId === 'screen-inicio') {
+    header.style.display = 'none';
+  } else {
+    header.style.display = 'flex';
+    const map = {
+      'screen-participantes':'Participantes','screen-seleccion-caso':'Selección de caso','screen-caso':'Contexto','screen-ronda1':'Ronda 1 / 4','screen-res1':'Resultados R1',
+      'screen-ronda2':'Ronda 2 / 4','screen-res2':'Resultados R2',
+      'screen-ronda3':'Ronda 3 / 4','screen-res3':'Resultados R3',
+      'screen-ronda4':'Ronda 4 / 4','screen-final':'Informe final'
+    };
+    badge.textContent = map[screenId] || '';
+  }
+  window.scrollTo(0, 0);
+}
+
+function startRound1() { renderMetricasList(); renderRonda1Context(); goTo('screen-ronda1'); }
+
+// ===== SELECCIÓN DE OPCIONES =====
+function selectOption(field, value, el) {
+  const grid = el.parentElement;
+  grid.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  gameState[field] = value;
+}
+
+
+// ===== PARTICIPANTES Y CASOS =====
+function parseParticipants(raw) {
+  return raw
+    .split(/[\n,;]+/)
+    .map(x => x.trim())
+    .filter(Boolean);
+}
+
+function submitParticipantes() {
+  const names = parseParticipants(document.getElementById('participants-input').value || '');
+  const err = document.getElementById('participants-error');
+  if (!names.length) {
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+  gameState.teamName = (document.getElementById('team-name').value || '').trim();
+  gameState.participants = names;
+  document.getElementById('participants-preview').innerHTML =
+    names.map(n => `<span class="participant-chip">${escapeHtml(n)}</span>`).join('');
+  renderCaseSelection();
+  goTo('screen-seleccion-caso');
+}
+
+function renderCaseSelection() {
+  const grid = document.getElementById('caseGrid');
+  if (!grid) return;
+  grid.innerHTML = CASES.map(c => `
+    <div class="case-card ${gameState.selectedCaseId === c.id ? 'selected' : ''}" onclick="selectCase('${c.id}', this)">
+      <div class="case-sector">${c.sector}</div>
+      <div class="case-title">${c.icon} ${c.name}</div>
+      <div class="case-desc">${c.shortDescription}</div>
+      <div class="case-meta">Mercado: ${fmt(c.marketSize)} · Inversión inicial: $${fmtM(c.initialInvestment)} · Tasa: ${pct(c.discountRate)}</div>
+    </div>
+  `).join('');
+}
+
+function selectCase(caseId, el) {
+  document.querySelectorAll('.case-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  gameState.selectedCaseId = caseId;
+  applyCaseSettings();
+}
+
+function submitCaseSelection() {
+  const err = document.getElementById('case-error');
+  if (!gameState.selectedCaseId) {
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+  applyCaseSettings();
+  renderCaseContext();
+  goTo('screen-caso');
+}
+
+function renderCaseContext() {
+  const c = currentCase();
+  document.getElementById('case-title').textContent = `📌 El caso: ${c.name}`;
+  document.getElementById('case-description').innerHTML = `<strong>${c.name}</strong> es ${c.shortDescription.charAt(0).toLowerCase() + c.shortDescription.slice(1)}`;
+  document.getElementById('case-logic').textContent = c.logic;
+  document.getElementById('case-actors-table').innerHTML = `
+    <thead><tr><th>Actor</th><th>Rol</th><th>Potencial de monetización</th></tr></thead>
+    <tbody>${c.actors.map(a => `<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td></tr>`).join('')}</tbody>
+  `;
+  document.getElementById('case-market-box').innerHTML =
+    `<strong>Contexto del mercado</strong>
+    Mercado potencial simulado: ${fmt(c.marketSize)} usuarios o clientes relevantes. Capital inicial: $${fmtM(c.initialInvestment)} USD. Tasa de descuento: ${pct(c.discountRate)} anual. Costos fijos base por ronda: $${fmtM(c.fixedBase)}.`;
+}
+
+function renderRonda1Context() {
+  const c = currentCase();
+  const s = c.segments;
+  const p = c.proposals;
+
+  document.getElementById('segmentoGrid').innerHTML = `
+    <div class="option-card" onclick="selectOption('segmento','estudiantes',this)">
+      <div class="option-title">${s.estudiantes.icon} ${s.estudiantes.title}</div>
+      <div class="option-desc">${s.estudiantes.desc}</div>
+    </div>
+    <div class="option-card" onclick="selectOption('segmento','universidades',this)">
+      <div class="option-title">${s.universidades.icon} ${s.universidades.title}</div>
+      <div class="option-desc">${s.universidades.desc}</div>
+    </div>
+    <div class="option-card" onclick="selectOption('segmento','comercios',this)">
+      <div class="option-title">${s.comercios.icon} ${s.comercios.title}</div>
+      <div class="option-desc">${s.comercios.desc}</div>
+    </div>
+  `;
+
+  document.getElementById('propuestaGrid').innerHTML = `
+    <div class="option-card" onclick="selectOption('propuesta','conveniencia',this)">
+      <div class="option-title">${p.conveniencia.icon} ${p.conveniencia.title}</div>
+      <div class="option-desc">${p.conveniencia.desc}</div>
+    </div>
+    <div class="option-card" onclick="selectOption('propuesta','ahorro',this)">
+      <div class="option-title">${p.ahorro.icon} ${p.ahorro.title}</div>
+      <div class="option-desc">${p.ahorro.desc}</div>
+    </div>
+    <div class="option-card" onclick="selectOption('propuesta','engagement',this)">
+      <div class="option-title">${p.engagement.icon} ${p.engagement.title}</div>
+      <div class="option-desc">${p.engagement.desc}</div>
+    </div>
+    <div class="option-card" onclick="selectOption('propuesta','datos',this)">
+      <div class="option-title">${p.datos.icon} ${p.datos.title}</div>
+      <div class="option-desc">${p.datos.desc}</div>
+    </div>
+  `;
+}
+
+
+// ===== RONDA 1 =====
+function submitRonda1() {
+  const err = document.getElementById('r1-error');
+  if (!gameState.modelo || !gameState.segmento || !gameState.propuesta) {
+    err.style.display = 'block'; return;
+  }
+  err.style.display = 'none';
+  if (!validateJustification('r1')) return;
+  calculateRonda1();
+  renderResultados1();
+  goTo('screen-res1');
+}
+
+function calculateRonda1() {
+  const r = gameState.results;
+  // Efectos del modelo
+  const modeloMap = {
+    b2c:       { awareness:0.30, activation:0.50, conversion:0.08, retention:0.60, priceUSD:12,  cac:15  },
+    b2b:       { awareness:0.15, activation:0.70, conversion:0.25, retention:0.80, priceUSD:400, cac:120 },
+    marketplace:{ awareness:0.25, activation:0.45, conversion:0.12, retention:0.55, priceUSD:25, cac:40 }
+  };
+  const m = modeloMap[gameState.modelo];
+
+  // Coherencia modelo-segmento
+  let coherenceBonus = 0;
+  if (gameState.modelo === 'b2c' && gameState.segmento === 'estudiantes') coherenceBonus = 0.05;
+  if (gameState.modelo === 'b2b' && gameState.segmento === 'universidades') coherenceBonus = 0.08;
+  if (gameState.modelo === 'marketplace' && gameState.segmento === 'comercios') coherenceBonus = 0.06;
+
+  // Coherencia propuesta de valor
+  let pvBonus = 0;
+  if (gameState.propuesta === 'ahorro' && gameState.segmento === 'estudiantes') pvBonus = 0.03;
+  if (gameState.propuesta === 'datos' && gameState.segmento === 'universidades') pvBonus = 0.05;
+  if (gameState.propuesta === 'engagement' && gameState.segmento === 'universidades') pvBonus = 0.03;
+  if (gameState.propuesta === 'conveniencia') pvBonus = 0.02;
+
+  const aw  = Math.min(m.awareness + coherenceBonus, 0.50);
+  const act = Math.min(m.activation + pvBonus, 0.85);
+  const cv  = Math.min(m.conversion + pvBonus/2, 0.40);
+
+  r.registeredUsers  = Math.round(BASE.marketSize * aw);
+  r.activeUsers      = Math.round(r.registeredUsers * act);
+  r.payingCustomers  = Math.round(r.activeUsers * cv);
+  r.conversionRate   = cv;
+  r.retentionRate    = m.retention;
+  r.cac              = m.cac;
+  r.pricePerCustomer = m.priceUSD;
+  r.marginPerCustomer= m.priceUSD * 0.55; // margen bruto base
+  gameState.modelParams = m;
+}
+
+function renderResultados1() {
+  const r = gameState.results;
+
+  // KPIs
+  const kpis = [
+    { label:'Usuarios registrados', value: fmt(r.registeredUsers), color: 'green', status:'Favorable' },
+    { label:'Usuarios activos',     value: fmt(r.activeUsers),     color: r.activeUsers/r.registeredUsers > 0.4 ? 'green':'yellow', status: pct(r.activeUsers/r.registeredUsers)+' activación' },
+    { label:'Clientes de pago',     value: fmt(r.payingCustomers), color: r.payingCustomers > 500 ? 'green': r.payingCustomers > 100 ? 'yellow' : 'red', status:'Conversión: '+pct(r.conversionRate) },
+    { label:'CAC (Costo adquisición)', value: '$'+r.cac, color: r.cac < 30 ? 'green': r.cac < 80 ? 'yellow':'red', status: r.cac < 30 ? 'Eficiente' : r.cac < 80 ? 'Aceptable':'Alto' },
+    { label:'Retención estimada',   value: pct(r.retentionRate), color: r.retentionRate > 0.65 ? 'green': r.retentionRate > 0.45 ? 'yellow':'red', status: r.retentionRate > 0.65 ? 'Favorable':'Riesgo de churn' },
+    { label:'Precio por cliente',   value: '$'+r.pricePerCustomer+'/mes', color:'green', status:'Nivel de modelo' }
+  ];
+  document.getElementById('res1-kpis').innerHTML = kpis.map(kpiCard).join('');
+
+  // Análisis de coherencia
+  const coherente = (
+    (gameState.modelo === 'b2c' && gameState.segmento === 'estudiantes') ||
+    (gameState.modelo === 'b2b' && gameState.segmento === 'universidades') ||
+    (gameState.modelo === 'marketplace' && gameState.segmento === 'comercios')
+  );
+  const modeloLabel = {b2c:'B2C Freemium', b2b:'B2B Institucional', marketplace:'Marketplace'}[gameState.modelo];
+  const segLabel = currentCase().segments[gameState.segmento].title;
+
+  document.getElementById('res1-coherencia-texto').innerHTML = coherente
+    ? `<div class="feedback-box success"><strong>✅ Modelo coherente</strong>La combinación <em>${modeloLabel}</em> con segmento <em>${segLabel}</em> es consistente. Esto mejora la adopción y la conversión.</div>`
+    : `<div class="feedback-box warn"><strong>⚠ Coherencia baja</strong>La combinación <em>${modeloLabel}</em> con segmento <em>${segLabel}</em> puede generar fricción. Por ejemplo, B2C Freemium con universidades como segmento tiene un ciclo de venta complejo sin el ticket alto de B2B.</div>`;
+
+  // Feedback general
+  let fb = '';
+  if (r.payingCustomers < 100)
+    fb += feedbackBox('warn', '⚠ Bajo volumen de clientes de pago', 'Con menos de 100 clientes de pago, el modelo tiene dificultades para cubrir costos fijos en el corto plazo.');
+  if (r.cac > 80)
+    fb += feedbackBox('danger', '🔴 CAC elevado', 'La adquisición es costosa. Revisa si el canal de distribución es eficiente para este segmento.');
+  if (r.retentionRate < 0.50)
+    fb += feedbackBox('warn', '⚠ Riesgo de churn', 'La retención baja indica que los usuarios no están encontrando suficiente valor para quedarse.');
+  if (!fb)
+    fb = feedbackBox('success', '✅ Buen punto de partida', 'Tu modelo tiene indicadores iniciales favorables. Mantén el foco en las métricas accionables en la siguiente ronda.');
+  document.getElementById('res1-feedback').innerHTML = fb;
+}
+
+// ===== RONDA 2 =====
+function renderMetricasList() {
+  const cont = document.getElementById('metricasList');
+  cont.innerHTML = METRICAS_LISTA.map(m => `
+    <div class="metric-item" id="mi-${m.id}" onclick="toggleMetrica('${m.id}', this)">
+      <input type="checkbox" id="cb-${m.id}" onclick="event.stopPropagation()">
+      <div>
+        <span class="metric-label">${m.label}</span>
+        <span class="metric-type ${m.tipo === 'vanidosa' ? 'badge-vanity':'badge-actionable'}">${m.tipo === 'vanidosa' ? 'Vanidosa':'Accionable'}</span>
+        <div style="font-size:.82rem;color:#6b7280;margin-top:4px">${m.impacto}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleMetrica(id, el) {
+  const cb = document.getElementById('cb-' + id);
+  const sel = gameState.metricas;
+  if (sel.includes(id)) {
+    sel.splice(sel.indexOf(id), 1);
+    el.classList.remove('selected');
+    cb.checked = false;
+  } else {
+    if (sel.length >= 3) {
+      alert('Solo puedes seleccionar 3 métricas. Desmarca una primero.');
+      return;
+    }
+    sel.push(id);
+    el.classList.add('selected');
+    cb.checked = true;
+  }
+}
+
+function submitRonda2() {
+  const err1 = document.getElementById('r2-error');
+  const err2 = document.getElementById('r2-exp-error');
+  let ok = true;
+  if (gameState.metricas.length !== 3) { err1.style.display = 'block'; ok = false; } else err1.style.display = 'none';
+  if (!gameState.experimento)           { err2.style.display = 'block'; ok = false; } else err2.style.display = 'none';
+  if (!ok) return;
+  if (!validateJustification('r2')) return;
+  calculateRonda2();
+  renderResultados2();
+  goTo('screen-res2');
+}
+
+function calculateRonda2() {
+  const r = gameState.results;
+  const sel = gameState.metricas;
+  const accionables = sel.filter(id => METRICAS_LISTA.find(m => m.id === id).tipo === 'accionable').length;
+  gameState.accionablesCount = accionables;
+
+  // Bonus de aprendizaje según métricas
+  let learningBonus = 0;
+  if (accionables >= 3) learningBonus = 0.10;
+  else if (accionables === 2) learningBonus = 0.05;
+  else if (accionables === 1) learningBonus = 0.02;
+
+  // Bonus por experimento
+  const expConfig = getExperimentConfig(gameState.experimento);
+  learningBonus += expConfig.bonus || 0;
+
+  // Mejorar tasas con aprendizaje
+  r.conversionRate  = Math.min(r.conversionRate * (1 + learningBonus), 0.50);
+  r.retentionRate   = Math.min(r.retentionRate  * (1 + learningBonus * 0.5), 0.90);
+  r.activeUsers     = Math.round(r.activeUsers  * (1 + learningBonus * 0.3));
+  r.payingCustomers = Math.round(r.activeUsers  * r.conversionRate);
+  gameState.learningBonus = learningBonus;
+}
+
+function renderResultados2() {
+  const r = gameState.results;
+  const ac = gameState.accionablesCount;
+
+  // Resumen métricas
+  const metSel = gameState.metricas.map(id => METRICAS_LISTA.find(m => m.id === id));
+  document.getElementById('res2-metricas').innerHTML =
+    metSel.map(m => `
+      <div class="feedback-box ${m.tipo === 'accionable' ? 'success':'warn'}" style="margin:6px 0">
+        <strong>${m.tipo === 'accionable' ? '✅ Accionable':'⚠ Vanidosa'}: ${m.label}</strong>
+        ${m.impacto}
+      </div>
+    `).join('');
+
+  // KPIs actualizados
+  const kpis = [
+    { label:'Usuarios activos',       value: fmt(r.activeUsers),       color:'green', status:'Actualizado con aprendizaje' },
+    { label:'Clientes de pago',       value: fmt(r.payingCustomers),   color: r.payingCustomers > 500 ? 'green':'yellow', status:'Conversión: '+pct(r.conversionRate) },
+    { label:'Métricas accionables',   value: ac + ' de 3',             color: ac >= 2 ? 'green': ac === 1 ? 'yellow':'red', status: ac >= 2 ? 'Buen aprendizaje' : 'Aprendizaje débil' },
+    { label:'Bonus de aprendizaje',   value: pct(gameState.learningBonus), color:'green', status:'Mejora aplicada' }
+  ];
+  document.getElementById('res2-kpis').innerHTML = kpis.map(kpiCard).join('');
+
+  // Feedback
+  let fb = '';
+  if (ac === 0)
+    fb += feedbackBox('danger', '🔴 Todas tus métricas son vanidosas', 'El crecimiento parece positivo, pero puede ser una métrica vanidosa si los usuarios no vuelven ni pagan.');
+  else if (ac < 2)
+    fb += feedbackBox('warn', '⚠ Pocas métricas accionables', 'Tienes '+ac+' métrica accionable. Esto limita tu capacidad de tomar decisiones fundamentadas.');
+  else
+    fb += feedbackBox('success', '✅ Buen foco en métricas accionables', 'Con '+ac+' métricas accionables, tu equipo tiene las herramientas para tomar mejores decisiones en las próximas rondas.');
+  const expConfig = getExperimentConfig(gameState.experimento);
+  if (expConfig.feedbackText)
+    fb += feedbackBox('info', expConfig.feedbackTitle, expConfig.feedbackText);
+  document.getElementById('res2-feedback').innerHTML = fb;
+}
+
+// ===== RONDA 3 =====
+function submitRonda3() {
+  const fields = ['precio','marketing','desarrollo','soporte','descuento','canal','retencionEstrategia','capacidadOperativa','analitica','alianzas'];
+  const vals = fields.map(f => document.getElementById('sel-'+f).value);
+  const err = document.getElementById('r3-error');
+  if (vals.some(v => !v)) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  if (!validateJustification('r3')) return;
+  gameState.precio    = document.getElementById('sel-precio').value;
+  gameState.marketing = document.getElementById('sel-marketing').value;
+  gameState.desarrollo= document.getElementById('sel-desarrollo').value;
+  gameState.soporte   = document.getElementById('sel-soporte').value;
+  gameState.descuento = document.getElementById('sel-descuento').value;
+  gameState.canal = document.getElementById('sel-canal').value;
+  gameState.retencionEstrategia = document.getElementById('sel-retencionEstrategia').value;
+  gameState.capacidadOperativa = document.getElementById('sel-capacidadOperativa').value;
+  gameState.analitica = document.getElementById('sel-analitica').value;
+  gameState.alianzas = document.getElementById('sel-alianzas').value;
+  calculateRonda3();
+  renderResultados3();
+  goTo('screen-res3');
+}
+
+function calculateRonda3() {
+  const r = gameState.results;
+  const mp = gameState.modelParams;
+
+  // Tablas de efectos
+  const precioMap = {
+    bajo:  { factor:1.25, priceAdj:0.65, marginAdj:0.55 },
+    medio: { factor:1.00, priceAdj:1.00, marginAdj:0.65 },
+    alto:  { factor:0.75, priceAdj:1.40, marginAdj:0.75 }
+  };
+  const mktMap = {
+    conservador: { cacMult:0.70, growth:1.05, spend:12000 },
+    moderado:    { cacMult:1.00, growth:1.15, spend:22000 },
+    agresivo:    { cacMult:1.40, growth:1.30, spend:40000 }
+  };
+  const devMap = {
+    basico:     { fixedAdd:8000,  retMult:0.90, qualMult:0.85 },
+    intermedio: { fixedAdd:18000, retMult:1.00, qualMult:1.00 },
+    avanzado:   { fixedAdd:35000, retMult:1.15, qualMult:1.10 }
+  };
+  const supMap = {
+    bajo:     { varAdd:2,  satMult:0.88 },
+    estandar: { varAdd:5,  satMult:1.00 },
+    premium:  { varAdd:10, satMult:1.10 }
+  };
+  const descMap = { '0':1.00, '20':0.80, '40':0.60 };
+  const canalMap = {
+    organico:    { growth:0.95, cacMult:0.65, spendAdd:5000 },
+    performance: { growth:1.22, cacMult:1.25, spendAdd:18000 },
+    alianzas:    { growth:1.12, cacMult:0.90, spendAdd:10000 }
+  };
+  const retMap = {
+    reactiva:  { retMult:0.92, varAdd:1, fixedAdd:0 },
+    lifecycle: { retMult:1.08, varAdd:3, fixedAdd:6000 },
+    comunidad: { retMult:1.14, varAdd:5, fixedAdd:9000 }
+  };
+  const capMap = {
+    lean:        { fixedMult:0.90, qualityMult:0.92, retMult:0.96 },
+    equilibrada: { fixedMult:1.00, qualityMult:1.00, retMult:1.00 },
+    escalable:   { fixedMult:1.18, qualityMult:1.08, retMult:1.05 }
+  };
+  const anaMap = {
+    basica:     { conversionMult:0.97, fixedAdd:2000 },
+    accionable: { conversionMult:1.06, fixedAdd:8000 },
+    predictiva: { conversionMult:1.12, fixedAdd:16000 }
+  };
+  const aliMap = {
+    ninguna:          { growth:0.95, cacMult:1.00, spendAdd:0, fixedAdd:0 },
+    comerciales:      { growth:1.08, cacMult:0.92, spendAdd:6000, fixedAdd:0 },
+    institucionales:  { growth:1.15, cacMult:0.85, spendAdd:12000, fixedAdd:5000 }
+  };
+
+  const P = precioMap[gameState.precio];
+  const M = mktMap[gameState.marketing];
+  const D = devMap[gameState.desarrollo];
+  const S = supMap[gameState.soporte];
+  const C = canalMap[gameState.canal];
+  const R = retMap[gameState.retencionEstrategia];
+  const O = capMap[gameState.capacidadOperativa];
+  const A = anaMap[gameState.analitica];
+  const L = aliMap[gameState.alianzas];
+  const disc = descMap[gameState.descuento];
+
+  // Precio efectivo y demanda
+  const basePrice  = mp.priceUSD * P.priceAdj * disc;
+  const effGrowth  = P.factor * M.growth * D.retMult * C.growth * O.qualityMult * L.growth;
+  const monetizationEffect = A.conversionMult;
+  r.payingCustomers= Math.round(r.payingCustomers * effGrowth * monetizationEffect);
+  r.activeUsers    = Math.round(r.activeUsers * effGrowth);
+  r.cac            = Math.round(mp.cac * M.cacMult * C.cacMult * L.cacMult);
+  r.pricePerCustomer = basePrice;
+
+  // Ingresos
+  r.revenue = r.payingCustomers * basePrice;
+
+  // Costos
+  const fixedCosts = (BASE.fixedBase + D.fixedAdd + R.fixedAdd + A.fixedAdd + L.fixedAdd) * O.fixedMult;
+  const varCost    = (basePrice * (1 - P.marginAdj)) + S.varAdd + R.varAdd;
+  const mktSpend   = M.spend + C.spendAdd + L.spendAdd;
+  r.variableCostPerCustomer = varCost;
+  r.fixedCosts     = fixedCosts;
+  r.marketingSpend = mktSpend;
+  r.totalCosts     = fixedCosts + (varCost * r.payingCustomers) + mktSpend;
+
+  // Punto de equilibrio
+  r.contributionMargin    = basePrice - varCost;
+  r.breakEvenCustomers    = r.contributionMargin > 0
+    ? Math.ceil(fixedCosts / r.contributionMargin)
+    : Infinity;
+
+  // Utilidad operativa
+  r.operatingProfit = r.revenue - r.totalCosts;
+  r.marginPerCustomer = r.contributionMargin;
+  r.retentionRate = Math.min(r.retentionRate * D.retMult * S.satMult * R.retMult * O.retMult, 0.95);
+
+  // Guardar para R4
+  gameState.basePrice  = basePrice;
+  gameState.fixedCosts = fixedCosts;
+  gameState.varCost    = varCost;
+  gameState.mktSpend   = mktSpend;
+}
+
+function renderResultados3() {
+  const r = gameState.results;
+
+  const kpis1 = [
+    { label:'Ingresos',          value:'$'+fmtM(r.revenue),       color: r.revenue > r.totalCosts ? 'green':'red',    status: r.revenue > r.totalCosts ? 'Positivos':'Por debajo de costos' },
+    { label:'Costos totales',    value:'$'+fmtM(r.totalCosts),    color:'yellow', status:'Incluye fijos, variables y mkt' },
+    { label:'Utilidad operativa',value:'$'+fmtM(r.operatingProfit),color: r.operatingProfit > 0 ? 'green':'red',      status: r.operatingProfit > 0 ? 'Favorable':'Pérdida operativa' },
+    { label:'Margen contribución',value:'$'+r.contributionMargin.toFixed(0)+'/cliente',color: r.contributionMargin > 0 ? 'green':'red', status: r.contributionMargin > 0 ? 'Positivo':'Negativo ⚠' },
+    { label:'Punto de equilibrio',value: r.breakEvenCustomers === Infinity ? '∞' : fmt(r.breakEvenCustomers)+' clientes', color: r.breakEvenCustomers <= r.payingCustomers ? 'green': r.breakEvenCustomers < r.activeUsers ? 'yellow':'red', status: r.breakEvenCustomers <= r.payingCustomers ? 'Alcanzado ✅':'Aún no alcanzado' },
+    { label:'Distancia al PE',   value: r.breakEvenCustomers === Infinity ? 'N/A' : fmt(r.payingCustomers - r.breakEvenCustomers)+' clientes', color: (r.payingCustomers - r.breakEvenCustomers) >= 0 ? 'green':'red', status:(r.payingCustomers - r.breakEvenCustomers) >= 0 ? 'Superado':'Faltan clientes' }
+  ];
+  document.getElementById('res3-kpis').innerHTML = kpis1.map(kpiCard).join('');
+
+  const kpis2 = [
+    { label:'Clientes de pago',  value: fmt(r.payingCustomers),   color:'green',  status:'Acumulados Ronda 3' },
+    { label:'Usuarios activos',  value: fmt(r.activeUsers),       color:'green',  status:'' },
+    { label:'CAC',               value:'$'+r.cac,                 color: r.cac < r.pricePerCustomer ? 'green':'red', status: r.cac < r.pricePerCustomer ? 'Razonable':'Mayor que precio' },
+    { label:'Precio por cliente',value:'$'+r.pricePerCustomer.toFixed(0)+'/mes', color:'green', status:'Después de descuento' },
+    { label:'Retención',         value: pct(r.retentionRate),     color: r.retentionRate > 0.65 ? 'green':'yellow', status:'' },
+    { label:'Ingresos / costos', value: (r.revenue/r.totalCosts).toFixed(2)+'x', color: r.revenue > r.totalCosts ? 'green':'red', status: r.revenue > r.totalCosts ? 'Favorable':'Desfavorable' }
+  ];
+  document.getElementById('res3-kpis2').innerHTML = kpis2.map(kpiCard).join('');
+
+  let fb = '';
+  if (r.contributionMargin <= 0)
+    fb += feedbackBox('danger','🔴 Margen de contribución negativo','El precio es menor al costo variable unitario. El negocio pierde dinero con cada cliente adicional.');
+  if (r.breakEvenCustomers > r.activeUsers)
+    fb += feedbackBox('warn','⚠ Punto de equilibrio mayor que usuarios activos','El modelo requiere más clientes de los que razonablemente puede captar en este estado.');
+  if (r.operatingProfit < 0)
+    fb += feedbackBox('warn','⚠ Pérdida operativa','La adopción puede mejorar, pero la captura de valor es insuficiente para cubrir los costos actuales.');
+  if (r.revenue > r.totalCosts && r.operatingProfit > 0)
+    fb += feedbackBox('success','✅ Viabilidad operativa confirmada','El modelo genera ingresos superiores a sus costos. Buena base para la evaluación financiera.');
+  document.getElementById('res3-feedback').innerHTML = fb || feedbackBox('info','ℹ Análisis completado','Revisa los indicadores y decide si pivotear en la Ronda 4.');
+}
+
+// ===== RONDA 4 =====
+function goToRonda4() { calculateRonda4(); renderRonda4(); goTo('screen-ronda4'); }
+
+function calculateRonda4() {
+  const r = gameState.results;
+  const rate  = BASE.discountRate;
+  const n     = BASE.projectLife;
+  const inv   = BASE.initialInvestment;
+
+  // Proyectar flujos de caja por año (retención como multiplicador)
+  const flows = [];
+  let clients = r.payingCustomers;
+  for (let t = 1; t <= n; t++) {
+    const rev  = clients * r.pricePerCustomer * 12; // anualizado
+    const cost = r.fixedCosts * 12 + r.variableCostPerCustomer * clients * 12 + r.marketingSpend * (t === 1 ? 2 : 1);
+    const flow = rev - cost;
+    flows.push(flow);
+    clients = Math.round(clients * r.retentionRate);
+  }
+  gameState.cashFlows = flows;
+
+  // VAN
+  const pv = flows.reduce((acc, f, i) => acc + f / Math.pow(1 + rate, i + 1), 0);
+  r.npv = pv - inv;
+
+  // TIR (bisección)
+  r.irr = calcIRR(flows, inv);
+
+  // PR
+  let cumul = -inv;
+  r.payback = null;
+  for (let i = 0; i < flows.length; i++) {
+    cumul += flows[i];
+    if (cumul >= 0 && r.payback === null) r.payback = i + 1;
+  }
+
+  // B/C
+  const pvBenef  = flows.filter(f => f > 0).reduce((a, f, i) => a + f / Math.pow(1 + rate, gameState.cashFlows.indexOf(flows.filter(f2=>f2>0)[i]) + 1), 0);
+  const pvCost   = flows.filter(f => f < 0).reduce((a, f, i) => a + Math.abs(f) / Math.pow(1 + rate, gameState.cashFlows.indexOf(flows.filter(f2=>f2<0)[i]) + 1), inv);
+  r.bc = pvBenef / (pvCost || 1);
+
+  // VAE
+  const vanneq = r.npv + inv; // VAN total de beneficios
+  const annuity = rate * Math.pow(1 + rate, n) / (Math.pow(1 + rate, n) - 1);
+  r.vae = r.npv * annuity;
+
+  // IVAN
+  r.ivan = r.npv / inv;
+}
+
+function calcIRR(flows, inv) {
+  // Búsqueda binaria
+  let lo = -0.90, hi = 5.00;
+  for (let iter = 0; iter < 200; iter++) {
+    const mid = (lo + hi) / 2;
+    const npv  = flows.reduce((a, f, i) => a + f / Math.pow(1 + mid, i + 1), 0) - inv;
+    if (Math.abs(npv) < 0.01) return mid;
+    if (npv > 0) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+
+function signedMoneyCompact(value) {
+  const sign = value < 0 ? '−' : '';
+  return sign + '$' + fmtM(Math.abs(value));
+}
+
+function renderFinancialProjectionChart(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const points = [];
+  let cumulative = -BASE.initialInvestment;
+  points.push({ year: 0, label: 'Año 0', annual: -BASE.initialInvestment, cumulative });
+  gameState.cashFlows.forEach((flow, index) => {
+    cumulative += flow;
+    points.push({ year: index + 1, label: 'Año ' + (index + 1), annual: flow, cumulative });
+  });
+
+  const width = 760;
+  const height = 360;
+  const margin = { top: 28, right: 36, bottom: 56, left: 88 };
+  const chartW = width - margin.left - margin.right;
+  const chartH = height - margin.top - margin.bottom;
+  const values = points.flatMap(p => [p.annual, p.cumulative, 0]);
+  let minY = Math.min(...values);
+  let maxY = Math.max(...values);
+  if (minY === maxY) { minY -= 1; maxY += 1; }
+  const pad = Math.max((maxY - minY) * 0.12, BASE.initialInvestment * 0.08);
+  minY -= pad;
+  maxY += pad;
+
+  const x = index => margin.left + (index / (points.length - 1)) * chartW;
+  const y = value => margin.top + ((maxY - value) / (maxY - minY)) * chartH;
+  const poly = key => points.map((p, i) => `${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
+
+  const ticks = [];
+  const tickCount = 5;
+  for (let i = 0; i < tickCount; i++) {
+    const value = minY + ((maxY - minY) / (tickCount - 1)) * i;
+    ticks.push(value);
+  }
+  const zeroY = y(0);
+  const showZero = zeroY >= margin.top && zeroY <= margin.top + chartH;
+
+  const grid = ticks.map(value => {
+    const yy = y(value);
+    return `<line class="chart-grid-line" x1="${margin.left}" y1="${yy.toFixed(1)}" x2="${width - margin.right}" y2="${yy.toFixed(1)}"></line>
+            <text class="chart-tick" x="${margin.left - 12}" y="${(yy + 4).toFixed(1)}" text-anchor="end">${signedMoneyCompact(value)}</text>`;
+  }).join('');
+
+  const xLabels = points.map((p, i) => `
+    <line class="chart-grid-line" x1="${x(i).toFixed(1)}" y1="${margin.top}" x2="${x(i).toFixed(1)}" y2="${margin.top + chartH}"></line>
+    <text class="chart-label" x="${x(i).toFixed(1)}" y="${height - 22}" text-anchor="middle">${p.label}</text>
+  `).join('');
+
+  const annualPoints = points.map((p, i) => `
+    <circle class="chart-point annual" cx="${x(i).toFixed(1)}" cy="${y(p.annual).toFixed(1)}" r="5">
+      <title>${p.label} · Flujo anual: ${signedMoneyCompact(p.annual)}</title>
+    </circle>
+  `).join('');
+
+  const cumulativePoints = points.map((p, i) => `
+    <circle class="chart-point cumulative" cx="${x(i).toFixed(1)}" cy="${y(p.cumulative).toFixed(1)}" r="5">
+      <title>${p.label} · Flujo acumulado: ${signedMoneyCompact(p.cumulative)}</title>
+    </circle>
+  `).join('');
+
+  const lastAnnual = points[points.length - 1].annual;
+  const lastCumulative = points[points.length - 1].cumulative;
+
+  container.innerHTML = `
+    <div class="financial-chart-title">Evolución de flujos proyectados</div>
+    <div class="financial-chart-subtitle">Incluye inversión inicial en Año 0 y proyección anual durante ${BASE.projectLife} años.</div>
+    <svg class="cashflow-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gráfico de línea de flujos financieros proyectados">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="10" fill="#ffffff"></rect>
+      ${grid}
+      ${xLabels}
+      ${showZero ? `<line class="chart-zero-line" x1="${margin.left}" y1="${zeroY.toFixed(1)}" x2="${width - margin.right}" y2="${zeroY.toFixed(1)}"></line>` : ''}
+      <line class="chart-axis-line" x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartH}"></line>
+      <line class="chart-axis-line" x1="${margin.left}" y1="${margin.top + chartH}" x2="${width - margin.right}" y2="${margin.top + chartH}"></line>
+      <polyline class="chart-line annual" points="${poly('annual')}"></polyline>
+      <polyline class="chart-line cumulative" points="${poly('cumulative')}"></polyline>
+      ${annualPoints}
+      ${cumulativePoints}
+      <text class="chart-value-label" x="${width - margin.right - 4}" y="${(y(lastAnnual) - 10).toFixed(1)}" text-anchor="end">${signedMoneyCompact(lastAnnual)}</text>
+      <text class="chart-value-label" x="${width - margin.right - 4}" y="${(y(lastCumulative) + 18).toFixed(1)}" text-anchor="end">${signedMoneyCompact(lastCumulative)}</text>
+      <text class="chart-tick" x="${margin.left}" y="18">Valores en USD</text>
+    </svg>
+    <div class="chart-legend">
+      <span class="chart-legend-item"><span class="chart-legend-swatch annual"></span>Flujo de caja anual</span>
+      <span class="chart-legend-item"><span class="chart-legend-swatch cumulative"></span>Flujo de caja acumulado</span>
+      <span class="chart-legend-item">Línea roja punteada: punto cero</span>
+    </div>
+  `;
+}
+
+function renderRonda4() {
+  const r = gameState.results;
+  const rate = BASE.discountRate;
+
+  renderFinancialProjectionChart('r4-chart');
+
+  // Tabla de flujos
+  let tbl = `<table class="sim-table"><thead><tr><th>Año</th><th>Flujo de caja</th><th>VP (r=12%)</th><th>Acumulado</th></tr></thead><tbody>`;
+  tbl += `<tr><td>0</td><td>−$${fmt(BASE.initialInvestment)}</td><td>−$${fmt(BASE.initialInvestment)}</td><td>−$${fmt(BASE.initialInvestment)}</td></tr>`;
+  let cum = -BASE.initialInvestment;
+  gameState.cashFlows.forEach((f, i) => {
+    const vp = f / Math.pow(1 + rate, i + 1);
+    cum += f;
+    const cumColor = cum >= 0 ? '#16a34a' : '#dc2626';
+    tbl += `<tr><td>${i+1}</td><td>$${fmtM(f)}</td><td>$${fmtM(vp)}</td><td style="color:${cumColor};font-weight:600">$${fmtM(cum)}</td></tr>`;
+  });
+  tbl += '</tbody></table>';
+  document.getElementById('r4-flujos').innerHTML = tbl;
+
+  // KPIs financieros
+  const kpis = [
+    { label:'B/C — Beneficio/Costo', value: r.bc.toFixed(2), color: r.bc > 1.2 ? 'green': r.bc > 1 ? 'yellow':'red', status: r.bc > 1.2 ? 'Favorable' : r.bc > 1 ? 'Marginal':'Desfavorable' },
+    { label:'VAN',  value:'$'+fmtM(r.npv),  color: r.npv > 0 ? 'green':'red', status: r.npv > 0 ? 'Crea valor':'Destruye valor' },
+    { label:'TIR',  value: pct(r.irr),       color: r.irr > BASE.discountRate ? 'green': r.irr > 0 ? 'yellow':'red', status: r.irr > BASE.discountRate ? 'Mayor que tasa (12%)':'Menor que tasa (12%)' },
+    { label:'PR — Período recuperación', value: r.payback ? r.payback+' año(s)' : 'No recupera', color: r.payback && r.payback <= 2 ? 'green': r.payback && r.payback <= 3 ? 'yellow':'red', status: r.payback ? (r.payback <= 2 ? 'Rápido':'Lento'):'No recupera inversión' },
+    { label:'VAE — Valor Anual Equiv.', value:'$'+fmtM(r.vae), color: r.vae > 0 ? 'green':'red', status: r.vae > 0 ? 'Favorable':'Desfavorable' },
+    { label:'IVAN — Índice VAN', value: r.ivan.toFixed(2), color: r.ivan > 0.3 ? 'green': r.ivan > 0 ? 'yellow':'red', status: r.ivan > 0.3 ? 'Alta eficiencia': r.ivan > 0 ? 'Eficiencia moderada':'No eficiente' }
+  ];
+  document.getElementById('r4-kpis').innerHTML = kpis.map(kpiCard).join('');
+}
+
+const MIN_JUSTIFICATION_CHARS = 300;
+
+function getJustificationText(roundKey) {
+  const el = document.getElementById('just-' + roundKey);
+  return el ? el.value.trim() : '';
+}
+
+function updateJustificationCounter(roundKey) {
+  const text = getJustificationText(roundKey);
+  const counter = document.getElementById('just-' + roundKey + '-counter');
+  const err = document.getElementById('just-' + roundKey + '-error');
+  if (gameState.justifications) gameState.justifications[roundKey] = text;
+  if (!counter) return;
+  counter.textContent = `${text.length} / ${MIN_JUSTIFICATION_CHARS} caracteres mínimos`;
+  counter.classList.toggle('ok', text.length >= MIN_JUSTIFICATION_CHARS);
+  if (err && text.length >= MIN_JUSTIFICATION_CHARS) err.style.display = 'none';
+}
+
+function validateJustification(roundKey) {
+  const text = getJustificationText(roundKey);
+  if (gameState.justifications) gameState.justifications[roundKey] = text;
+  updateJustificationCounter(roundKey);
+  const err = document.getElementById('just-' + roundKey + '-error');
+  if (text.length < MIN_JUSTIFICATION_CHARS) {
+    if (err) err.style.display = 'block';
+    const input = document.getElementById('just-' + roundKey);
+    if (input) input.focus();
+    return false;
+  }
+  if (err) err.style.display = 'none';
+  return true;
+}
+
+function continueAfterJustification(roundKey, nextScreen) {
+  if (!validateJustification(roundKey)) return;
+  goTo(nextScreen);
+}
+
+function submitRonda4() {
+  const err = document.getElementById('r4-error');
+  if (!gameState.decision) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  if (!validateJustification('r4')) return;
+  calculateScore();
+  renderInformeFinal();
+  goTo('screen-final');
+}
+
+// ===== PUNTUACIÓN =====
+function calculateScore() {
+  const r = gameState.results;
+  const sb = {};
+
+  // 1. Coherencia del modelo (20 pts)
+  const coherente = (
+    (gameState.modelo === 'b2c' && gameState.segmento === 'estudiantes') ||
+    (gameState.modelo === 'b2b' && gameState.segmento === 'universidades') ||
+    (gameState.modelo === 'marketplace' && gameState.segmento === 'comercios')
+  );
+  const pvCoherente = (
+    (gameState.propuesta === 'ahorro' && gameState.segmento === 'estudiantes') ||
+    (gameState.propuesta === 'datos' && gameState.segmento === 'universidades') ||
+    (gameState.propuesta === 'engagement' && gameState.segmento === 'universidades') ||
+    (gameState.propuesta === 'conveniencia')
+  );
+  sb.coherencia = (coherente ? 14 : 7) + (pvCoherente ? 6 : 0);
+
+  // 2. Métricas accionables (20 pts)
+  sb.metricas = Math.round((gameState.accionablesCount / 3) * 15)
+    + getExperimentConfig(gameState.experimento).score;
+
+  // 3. Punto de equilibrio (15 pts)
+  if (r.breakEvenCustomers === Infinity) sb.pe = 0;
+  else if (r.payingCustomers >= r.breakEvenCustomers) sb.pe = 15;
+  else {
+    const ratio = r.payingCustomers / r.breakEvenCustomers;
+    sb.pe = Math.round(ratio * 15);
+  }
+
+  // 4. B/C (10 pts)
+  sb.bc = r.bc > 1.5 ? 10 : r.bc > 1.2 ? 8 : r.bc > 1 ? 5 : r.bc > 0.8 ? 2 : 0;
+
+  // 5. VAN positivo (15 pts)
+  sb.npv = r.npv > 50000 ? 15 : r.npv > 0 ? 10 : r.npv > -30000 ? 4 : 0;
+
+  // 6. TIR y PR razonables (10 pts)
+  const tirOk = r.irr > BASE.discountRate;
+  const prOk  = r.payback && r.payback <= 3;
+  sb.tirpr = (tirOk ? 5 : 0) + (prOk ? 5 : 0);
+
+  // 7. VAE e IVAN (10 pts)
+  const vaeOk  = r.vae > 0;
+  const ivanOk = r.ivan > 0.2;
+  sb.vaivan = (vaeOk ? 5 : 0) + (ivanOk ? 5 : 0);
+
+  const total = Object.values(sb).reduce((a, b) => a + b, 0);
+  r.score = Math.min(total, 100);
+  gameState.scoreBreakdown = sb;
+}
+
+// ===== INFORME FINAL =====
+function renderInformeFinal() {
+  const r  = gameState.results;
+  const sb = gameState.scoreBreakdown;
+
+  // Círculo de puntaje
+  const lvl = r.score >= 70 ? 'alto' : r.score >= 45 ? 'medio' : 'bajo';
+  const lvlLabel = r.score >= 70 ? 'Alto desempeño' : r.score >= 45 ? 'Desempeño medio' : 'Bajo desempeño';
+  document.getElementById('score-circle-wrap').innerHTML =
+    `<div class="score-circle ${lvl}"><span>${r.score}</span><span class="score-label">/100</span></div>`;
+  document.getElementById('score-label').innerHTML =
+    `<span style="font-weight:700">${lvlLabel}</span>`;
+
+  document.getElementById('final-title').textContent = `${currentCase().name} — Evaluación completa`;
+
+  // Resumen de decisiones
+  const modeloLabel = {b2c:'B2C Freemium',b2b:'B2B Institucional',marketplace:'Marketplace'}[gameState.modelo];
+  const c = currentCase();
+  const segLabel = c.segments[gameState.segmento].title;
+  const pvLabel  = c.proposals[gameState.propuesta].title;
+  const decLabel = {escalar:'🚀 Escalar',pivotar:'🔄 Pivotar',abandonar:'🛑 Abandonar'}[gameState.decision];
+  const metLabel = gameState.metricas.map(id => METRICAS_LISTA.find(m=>m.id===id).label).join(', ');
+
+  const participantes = gameState.participants.length
+    ? gameState.participants.map(n => `<span class="participant-chip">${escapeHtml(n)}</span>`).join('')
+    : '<span style="color:#6b7280">No registrados</span>';
+  const equipo = gameState.teamName || 'Sin nombre de equipo';
+
+  document.getElementById('final-decisiones').innerHTML = `
+    <div class="report-meta">
+      <div class="report-meta-item"><strong>Equipo</strong>${escapeHtml(equipo)}</div>
+      <div class="report-meta-item"><strong>Caso seleccionado</strong>${c.icon} ${c.name} · ${c.sector}</div>
+      <div class="report-meta-item" style="grid-column:1 / -1"><strong>Participantes</strong>${participantes}</div>
+    </div>
+    <div class="feedback-box info" style="margin-top:14px">
+      <strong>Informe de cierre</strong>
+      Las decisiones y respuestas escritas del equipo se presentan en el siguiente apartado, organizadas por ronda para facilitar la revisión docente y la exportación a PDF.
+    </div>`;
+
+  renderFinalJustifications();
+
+  // KPIs de negocio
+  document.getElementById('final-kpis-negocio').innerHTML = [
+    { label:'Usuarios registrados', value:fmt(r.registeredUsers),   color:'green',  status:'' },
+    { label:'Usuarios activos',     value:fmt(r.activeUsers),       color:'green',  status:'' },
+    { label:'Clientes de pago',     value:fmt(r.payingCustomers),   color: r.payingCustomers>500?'green':'yellow', status:'' },
+    { label:'Conversión a pago',    value:pct(r.conversionRate),    color: r.conversionRate>0.15?'green':'yellow', status:'' },
+    { label:'Retención',            value:pct(r.retentionRate),     color: r.retentionRate>0.65?'green':'yellow',  status:'' },
+    { label:'CAC',                  value:'$'+r.cac,                color: r.cac<50?'green':'red',                status:'' }
+  ].map(kpiCard).join('');
+
+  // KPIs operativas
+  document.getElementById('final-kpis-operativa').innerHTML = [
+    { label:'Ingresos',           value:'$'+fmtM(r.revenue),        color: r.revenue>r.totalCosts?'green':'red',       status:'' },
+    { label:'Costos totales',     value:'$'+fmtM(r.totalCosts),     color:'yellow',                                     status:'' },
+    { label:'Utilidad operativa', value:'$'+fmtM(r.operatingProfit),color: r.operatingProfit>0?'green':'red',           status: r.operatingProfit>0?'Favorable':'Pérdida' },
+    { label:'Margen contribución',value:'$'+r.contributionMargin.toFixed(0),color: r.contributionMargin>0?'green':'red',status:'' },
+    { label:'Punto de equilibrio',value: r.breakEvenCustomers===Infinity?'∞':fmt(r.breakEvenCustomers),color: r.payingCustomers>=r.breakEvenCustomers?'green':'red', status:r.payingCustomers>=r.breakEvenCustomers?'Alcanzado':'No alcanzado' },
+    { label:'Precio por cliente', value:'$'+r.pricePerCustomer.toFixed(0)+'/mes',color:'green',status:'' }
+  ].map(kpiCard).join('');
+
+  // KPIs financieras
+  document.getElementById('final-kpis-financiera').innerHTML = [
+    { label:'B/C',  value:r.bc.toFixed(2),    color: r.bc>1.2?'green':r.bc>1?'yellow':'red', status: r.bc>1?'Favorable':'Desfavorable' },
+    { label:'VAN',  value:'$'+fmtM(r.npv),    color: r.npv>0?'green':'red',                   status: r.npv>0?'Crea valor':'Destruye valor' },
+    { label:'TIR',  value:pct(r.irr),          color: r.irr>BASE.discountRate?'green':'red',   status: r.irr>BASE.discountRate?'Mayor que 12%':'Menor que 12%' },
+    { label:'PR',   value: r.payback?r.payback+' año(s)':'No recupera', color: r.payback&&r.payback<=2?'green':r.payback&&r.payback<=3?'yellow':'red', status:'' },
+    { label:'VAE',  value:'$'+fmtM(r.vae),    color: r.vae>0?'green':'red',                   status: r.vae>0?'Positivo':'Negativo' },
+    { label:'IVAN', value:r.ivan.toFixed(2),   color: r.ivan>0.3?'green':r.ivan>0?'yellow':'red', status: r.ivan>0?'Eficiente':'Ineficiente' }
+  ].map(kpiCard).join('');
+
+  renderFinancialProjectionChart('final-r4-chart');
+
+  // Recomendación
+  const recommended = r.npv > 0 && r.irr > BASE.discountRate && r.bc > 1 ? 'escalar'
+    : r.npv > -30000 && r.payingCustomers > 100 ? 'pivotar' : 'abandonar';
+  const decisionMatch = recommended === gameState.decision;
+  const recMap = {
+    escalar:  'Los indicadores financieros apoyan escalar. VAN positivo y TIR superior a la tasa de descuento confirman que el proyecto crea valor.',
+    pivotar:  'El proyecto muestra potencial de aprendizaje pero el modelo actual no es suficientemente viable. Pivotar de segmento o propuesta de valor puede mejorar los indicadores.',
+    abandonar:'Los indicadores muestran pérdidas sostenidas, CAC elevado y punto de equilibrio inalcanzable. Liberar recursos puede ser la decisión más responsable.'
+  };
+  document.getElementById('final-recomendacion').innerHTML =
+    `<div class="feedback-box ${decisionMatch ? 'success':'warn'}">
+      <strong>${decisionMatch ? '✅ Tu decisión coincide con los indicadores':'⚠ Tu decisión difiere de lo que sugieren los indicadores'}</strong>
+      El simulador recomienda <strong>${{escalar:'🚀 Escalar',pivotar:'🔄 Pivotar',abandonar:'🛑 Abandonar'}[recommended]}</strong>. ${recMap[recommended]}
+    </div>` +
+    feedbackGlobal(r);
+
+  // Tabla de puntaje
+  const rows = [
+    ['Coherencia del modelo de negocio', 20, sb.coherencia],
+    ['Uso de métricas accionables',       20, sb.metricas],
+    ['Mejora del punto de equilibrio',    15, sb.pe],
+    ['Relación beneficio/costo (B/C)',     10, sb.bc],
+    ['VAN positivo',                       15, sb.npv],
+    ['TIR y PR razonables',               10, sb.tirpr],
+    ['Uso correcto de VAE e IVAN',         10, sb.vaivan]
+  ];
+  document.getElementById('final-score-table').innerHTML =
+    `<thead><tr><th>Criterio</th><th>Máximo</th><th>Obtenido</th></tr></thead><tbody>` +
+    rows.map(([c, mx, ob]) =>
+      `<tr><td>${c}</td><td>${mx}</td><td style="color:${ob/mx>=0.7?'#16a34a':ob/mx>=0.4?'#ca8a04':'#dc2626'};font-weight:600">${ob}</td></tr>`
+    ).join('') +
+    `<tr style="font-weight:700"><td>Total</td><td>100</td><td style="color:${r.score>=70?'#16a34a':r.score>=45?'#ca8a04':'#dc2626'}">${r.score}</td></tr>
+    </tbody>`;
+}
+
+function selectOptionText(selectId, value) {
+  const el = document.getElementById(selectId);
+  if (!el) return value || 'No seleccionado';
+  const opt = Array.from(el.options || []).find(o => o.value === value);
+  return opt ? opt.textContent.replace(/\s+/g, ' ').trim() : (value || 'No seleccionado');
+}
+
+function formatJustificationText(key) {
+  const text = gameState.justifications && gameState.justifications[key] ? gameState.justifications[key].trim() : '';
+  return text ? escapeHtml(text) : '<span style="color:#991b1b;font-weight:600">Sin respuesta escrita registrada.</span>';
+}
+
+function decisionListHtml(items) {
+  return '<ul class="decision-response-list">' + items.map(item => `<li>${item}</li>`).join('') + '</ul>';
+}
+
+function renderFinalJustifications() {
+  const c = currentCase();
+  const modeloLabel = {b2c:'B2C Freemium', b2b:'B2B Institucional', marketplace:'Marketplace'}[gameState.modelo] || 'No seleccionado';
+  const segLabel = c.segments && c.segments[gameState.segmento] ? c.segments[gameState.segmento].title : 'No seleccionado';
+  const pvLabel = c.proposals && c.proposals[gameState.propuesta] ? c.proposals[gameState.propuesta].title : 'No seleccionado';
+  const metLabels = gameState.metricas.length
+    ? gameState.metricas.map(id => METRICAS_LISTA.find(m => m.id === id)?.label || id).join(', ')
+    : 'No seleccionadas';
+  const expLabel = gameState.experimento ? getExperimentConfig(gameState.experimento).label : 'No seleccionado';
+  const decLabel = {escalar:'🚀 Escalar', pivotar:'🔄 Pivotar', abandonar:'🛑 Abandonar'}[gameState.decision] || 'No seleccionado';
+
+  const rounds = [
+    {
+      title: 'Ronda 1 — Modelo de negocio',
+      decisions: [
+        `<strong>Modelo de ingresos:</strong> ${escapeHtml(modeloLabel)}`,
+        `<strong>Segmento prioritario:</strong> ${escapeHtml(segLabel)}`,
+        `<strong>Propuesta de valor dominante:</strong> ${escapeHtml(pvLabel)}`
+      ],
+      responseKey: 'r1'
+    },
+    {
+      title: 'Ronda 2 — Métricas y experimento de validación',
+      decisions: [
+        `<strong>Métricas priorizadas:</strong> ${escapeHtml(metLabels)}`,
+        `<strong>Experimento seleccionado:</strong> ${escapeHtml(expLabel)}`,
+        `<strong>Métricas accionables:</strong> ${gameState.accionablesCount || 0} de 3`
+      ],
+      responseKey: 'r2'
+    },
+    {
+      title: 'Ronda 3 — Decisiones operativas y comerciales',
+      decisions: [
+        `<strong>Nivel de precio:</strong> ${escapeHtml(selectOptionText('sel-precio', gameState.precio))}`,
+        `<strong>Inversión en marketing:</strong> ${escapeHtml(selectOptionText('sel-marketing', gameState.marketing))}`,
+        `<strong>Desarrollo de producto:</strong> ${escapeHtml(selectOptionText('sel-desarrollo', gameState.desarrollo))}`,
+        `<strong>Nivel de soporte:</strong> ${escapeHtml(selectOptionText('sel-soporte', gameState.soporte))}`,
+        `<strong>Descuento de lanzamiento:</strong> ${escapeHtml(selectOptionText('sel-descuento', gameState.descuento))}`,
+        `<strong>Canal de adquisición:</strong> ${escapeHtml(selectOptionText('sel-canal', gameState.canal))}`,
+        `<strong>Estrategia de retención:</strong> ${escapeHtml(selectOptionText('sel-retencionEstrategia', gameState.retencionEstrategia))}`,
+        `<strong>Capacidad operativa:</strong> ${escapeHtml(selectOptionText('sel-capacidadOperativa', gameState.capacidadOperativa))}`,
+        `<strong>Analítica de negocio:</strong> ${escapeHtml(selectOptionText('sel-analitica', gameState.analitica))}`,
+        `<strong>Estrategia de alianzas:</strong> ${escapeHtml(selectOptionText('sel-alianzas', gameState.alianzas))}`
+      ],
+      responseKey: 'r3'
+    },
+    {
+      title: 'Ronda 4 — Decisión financiera final',
+      decisions: [
+        `<strong>Decisión final:</strong> ${escapeHtml(decLabel)}`,
+        `<strong>VAN:</strong> $${fmtM(gameState.results.npv)}`,
+        `<strong>TIR:</strong> ${pct(gameState.results.irr)}`,
+        `<strong>Relación B/C:</strong> ${gameState.results.bc.toFixed(2)}`,
+        `<strong>Payback:</strong> ${gameState.results.payback ? gameState.results.payback + ' año(s)' : 'No recupera'}`
+      ],
+      responseKey: 'r4'
+    }
+  ];
+
+  const html = rounds.map(round => `
+    <div class="decision-response-card">
+      <h4>${round.title}</h4>
+      <div class="decision-response-grid">
+        <div class="decision-response-block">
+          <strong>Decisiones tomadas</strong>
+          ${decisionListHtml(round.decisions)}
+        </div>
+        <div class="decision-response-block">
+          <strong>Respuesta escrita del equipo</strong>
+          <div class="written-response-text">${formatJustificationText(round.responseKey)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  const target = document.getElementById('final-justificaciones');
+  if (target) target.innerHTML = html;
+}
+
+function feedbackGlobal(r) {
+  let msgs = [];
+  if (r.cac > r.pricePerCustomer)
+    msgs.push(feedbackBox('danger','🔴 CAC mayor que precio','La adquisición está siendo costosa y no se traduce en clientes de pago.'));
+  if (r.npv > 0 && r.payback > 3)
+    msgs.push(feedbackBox('warn','⚠ VAN positivo pero recuperación lenta','El proyecto crea valor, pero recupera la inversión lentamente.'));
+  if (r.irr > 0.30 && r.npv < 10000)
+    msgs.push(feedbackBox('warn','⚠ TIR alta y VAN bajo','La rentabilidad porcentual parece atractiva, pero la escala de valor creado es limitada.'));
+  if (r.ivan > 0.4)
+    msgs.push(feedbackBox('info','ℹ IVAN alto','El proyecto crea valor por unidad invertida; esto es relevante si el capital es escaso.'));
+  if (r.vae > 0)
+    msgs.push(feedbackBox('info','ℹ VAE positivo','Esta alternativa genera valor anual equivalente positivo. Útil para comparar con proyectos de distinta duración.'));
+  return msgs.join('');
+}
+
+// ===== RESET =====
+function resetSimulator() {
+  if (!confirm('¿Confirmas que quieres reiniciar? Se perderán todas las decisiones.')) return;
+  Object.assign(gameState, {
+    round:1, teamName:'', participants:[], selectedCaseId:null, modelo:null, segmento:null, propuesta:null,
+    metricas:[], experimento:null, precio:null, marketing:null,
+    desarrollo:null, soporte:null, descuento:null, canal:null, retencionEstrategia:null,
+    capacidadOperativa:null, analitica:null, alianzas:null, decision:null,
+    justifications:{ r1:'', r2:'', r3:'', r4:'' },
+    cashFlows:[], scoreBreakdown:{},
+    results:{ registeredUsers:0,activeUsers:0,payingCustomers:0,
+      conversionRate:0,retentionRate:0,cac:0,marginPerCustomer:0,
+      revenue:0,totalCosts:0,operatingProfit:0,contributionMargin:0,
+      breakEvenCustomers:0,bc:0,npv:0,irr:0,payback:null,vae:0,ivan:0,score:0 }
+  });
+  // Limpiar selecciones visuales
+  document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+  ['sel-precio','sel-marketing','sel-desarrollo','sel-soporte','sel-descuento','sel-canal','sel-retencionEstrategia','sel-capacidadOperativa','sel-analitica','sel-alianzas']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('team-name').value = '';
+  document.getElementById('participants-input').value = '';
+  document.getElementById('participants-preview').innerHTML = '';
+  ['r1','r2','r3','r4'].forEach(key => {
+    const input = document.getElementById('just-' + key);
+    const counter = document.getElementById('just-' + key + '-counter');
+    const err = document.getElementById('just-' + key + '-error');
+    if (input) input.value = '';
+    if (counter) { counter.textContent = '0 / 300 caracteres mínimos'; counter.classList.remove('ok'); }
+    if (err) err.style.display = 'none';
+  });
+  Object.assign(BASE, BASE_DEFAULT);
+  renderMetricasList();
+  renderCaseSelection();
+  goTo('screen-inicio');
+}
+
+
+// ===== EXPORTACIÓN A PDF =====
+function exportFinalPDF() {
+  if (!document.getElementById('screen-final').classList.contains('active')) {
+    renderInformeFinal();
+    goTo('screen-final');
+  }
+  setTimeout(() => window.print(), 150);
+}
+
+// ===== MODAL AYUDA =====
+function openHelp()  { document.getElementById('helpModal').classList.add('open'); }
+function closeHelp() { document.getElementById('helpModal').classList.remove('open'); }
+document.getElementById('helpModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeHelp(); });
+
+// ===== HELPERS UI =====
+function kpiCard(k) {
+  return `<div class="kpi-card ${k.color}">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value">${k.value}</div>
+    ${k.status ? `<div class="kpi-status">${k.status}</div>` : ''}
+  </div>`;
+}
+
+function feedbackBox(type, title, msg) {
+  return `<div class="feedback-box ${type}"><strong>${title}</strong>${msg}</div>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ===== HELPERS NUMÉRICOS =====
+function fmt(n) { return Math.round(n).toLocaleString('es-MX'); }
+function fmtM(n) {
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toString();
+}
+function pct(n) { return (n * 100).toFixed(1) + '%'; }
+
+
+document.getElementById('participants-input').addEventListener('input', () => {
+  const names = parseParticipants(document.getElementById('participants-input').value || '');
+  document.getElementById('participants-preview').innerHTML =
+    names.map(n => `<span class="participant-chip">${escapeHtml(n)}</span>`).join('');
+});
+renderCaseSelection();
+
+// ===== ENLACE RONDA 4 desde Ronda 3 =====
+// Sobreescribimos goTo para interceptar ronda4
+const _goTo = goTo;
+window.goTo = function(id) {
+  if (id === 'screen-ronda4') { calculateRonda4(); renderRonda4(); }
+  _goTo(id);
+};
+</script>
+</body>
+</html>
+
+
