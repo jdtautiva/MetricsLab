@@ -77,7 +77,3 @@ By completing the simulation, students are able to:
 ## Suggested Citation
 
 Díaz Tautiva, J.A. (2026). *MetricsLab — Innovation Metrics Decision Simulator*. Managerial Economics teaching simulator.
-
----
-## License
-This project is intended for educational use. Add the preferred license for your course, institution, or repository before publication.
