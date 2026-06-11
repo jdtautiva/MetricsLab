@@ -1,4 +1,4 @@
-# MetricsLab — Innovation Metrics Decision Simulator
+# DecisionVenture1 — Innovation Metrics Decision Simulator
 
 > **Interactive managerial economics simulator focused on innovation metrics, business model evaluation, and financial decision-making.**  
 > Developed for the **Managerial Economics** course by **Julián Díaz Tautiva, PhD**
@@ -7,7 +7,7 @@
 
 ## Overview
 
-**MetricsLab** is a browser-based pedagogical simulation tool designed for undergraduate innovation and managerial economics courses. Students work in teams and take the role of managers evaluating an innovation-based venture. Across four decision rounds, they must select a business case, define a business model, choose validation metrics, make operational and commercial decisions, and evaluate whether the project should be scaled, pivoted, or abandoned.
+**DecisionVenture1** is a browser-based pedagogical simulation tool designed for undergraduate innovation and managerial economics courses. Students work in teams and take the role of managers evaluating an innovation-based venture. Across four decision rounds, they must select a business case, define a business model, choose validation metrics, make operational and commercial decisions, and evaluate whether the project should be scaled, pivoted, or abandoned.
 
 The simulator emphasizes the managerial use of economic and financial indicators in innovation contexts. Students practice how business model choices, actionable metrics, cost structures, pricing, validation experiments, and investment indicators interact in the evaluation of an entrepreneurial project.
 
@@ -76,4 +76,4 @@ By completing the simulation, students are able to:
 ---
 ## Suggested Citation
 
-Díaz Tautiva, J.A. (2026). *MetricsLab — Innovation Metrics Decision Simulator*. Managerial Economics teaching simulator.
+Díaz Tautiva, J.A. (2026). *DecisionVenture1 — Innovation Metrics Decision Simulator*. Managerial Economics teaching simulator.
